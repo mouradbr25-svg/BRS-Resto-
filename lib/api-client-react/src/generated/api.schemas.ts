@@ -318,6 +318,24 @@ export interface QuizResult {
   tier?: string;
 }
 
+export interface MenuItemIngredient {
+  id: number;
+  menuItemId: number;
+  ingredientId: number;
+  ingredientName: string;
+  quantity: number;
+  unit: string;
+}
+
+export type MenuItemIngredientsListIngredientsItem = {
+  ingredientId: number;
+  quantity: number;
+};
+
+export interface MenuItemIngredientsList {
+  ingredients: MenuItemIngredientsListIngredientsItem[];
+}
+
 export interface DashboardStats {
   todayRevenue: number;
   weekRevenue?: number;

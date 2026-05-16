@@ -722,6 +722,53 @@ paths:
                 $ref: "#/components/schemas/QuizResult"
 
   # ANALYTICS
+  # MENU ITEM INGREDIENTS
+  /menu-items/{id}/ingredients:
+    get:
+      operationId: getMenuItemIngredients
+      tags: [menu-items]
+      summary: Get ingredients for a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ingredient list for the menu item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItemIngredient"
+    put:
+      operationId: setMenuItemIngredients
+      tags: [menu-items]
+      summary: Replace ingredient list for a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItemIngredientsList"
+      responses:
+        "200":
+          description: Updated ingredient list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItemIngredient"
+
   /analytics/dashboard:
     get:
       operationId: getDashboardStats
@@ -1257,6 +1304,39 @@ components:
           type: boolean
         tier:
           type: string
+
+    # MENU ITEM INGREDIENTS
+    MenuItemIngredient:
+      type: object
+      required: [id, menuItemId, ingredientId, ingredientName, quantity, unit]
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        ingredientId:
+          type: integer
+        ingredientName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+
+    MenuItemIngredientsList:
+      type: object
+      required: [ingredients]
+      properties:
+        ingredients:
+          type: array
+          items:
+            type: object
+            required: [ingredientId, quantity]
+            properties:
+              ingredientId:
+                type: integer
+              quantity:
+                type: number
 
     # ANALYTICS
     DashboardStats:
