@@ -721,6 +721,212 @@ paths:
               schema:
                 $ref: "#/components/schemas/QuizResult"
 
+  # NOTIFICATIONS (Digital Bell)
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications (for receptionist/owner)
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+    post:
+      operationId: createNotification
+      tags: [notifications]
+      summary: Customer sends a notification (call waiter / request bill)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationInput"
+      responses:
+        "201":
+          description: Notification created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+    delete:
+      operationId: deleteNotification
+      tags: [notifications]
+      summary: Delete a notification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /notifications/mark-all-read:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+
+  # REVIEWS
+  /reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List reviews (owner only)
+      responses:
+        "200":
+          description: Review list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Submit a review (post-quiz)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  /reviews/{id}:
+    patch:
+      operationId: updateReview
+      tags: [reviews]
+      summary: Toggle public/private for a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewToggleInput"
+      responses:
+        "200":
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+    delete:
+      operationId: deleteReview
+      tags: [reviews]
+      summary: Delete a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ORDERS - Transfer
+  /orders/{id}/transfer:
+    post:
+      operationId: transferOrder
+      tags: [orders]
+      summary: Transfer an order to a different table
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderTransferInput"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  # AUTH - Change Password
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password for a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
   # ANALYTICS
   # MENU ITEM INGREDIENTS
   /menu-items/{id}/ingredients:
@@ -895,6 +1101,8 @@ components:
           type: ["string", "null"]
         currentOrderId:
           type: ["integer", "null"]
+        occupiedSince:
+          type: ["string", "null"]
         createdAt:
           type: string
 
@@ -1084,6 +1292,100 @@ components:
         message:
           type: string
 
+    ReviewToggleInput:
+      type: object
+      properties:
+        isPublic:
+          type: boolean
+
+    OrderTransferInput:
+      type: object
+      required: [newTableId]
+      properties:
+        newTableId:
+          type: integer
+
+    AuthChangePasswordInput:
+      type: object
+      required: [userId, newPassword]
+      properties:
+        userId:
+          type: integer
+        newPassword:
+          type: string
+
+    # NOTIFICATIONS
+    Notification:
+      type: object
+      required: [id, tableId, tableNumber, type, read, createdAt]
+      properties:
+        id:
+          type: integer
+        tableId:
+          type: integer
+        tableNumber:
+          type: integer
+        type:
+          type: string
+          enum: [call_waiter, request_bill]
+        message:
+          type: ["string", "null"]
+        read:
+          type: boolean
+        createdAt:
+          type: string
+
+    NotificationInput:
+      type: object
+      required: [tableId, tableNumber, type]
+      properties:
+        tableId:
+          type: integer
+        tableNumber:
+          type: integer
+        type:
+          type: string
+          enum: [call_waiter, request_bill]
+        message:
+          type: string
+
+    # REVIEWS
+    Review:
+      type: object
+      required: [id, rating, isPublic, createdAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        customerName:
+          type: ["string", "null"]
+        rating:
+          type: integer
+        comment:
+          type: ["string", "null"]
+        isPublic:
+          type: boolean
+        createdAt:
+          type: string
+
+    ReviewInput:
+      type: object
+      required: [rating]
+      properties:
+        orderId:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        rating:
+          type: integer
+        comment:
+          type: string
+
     # ORDERS
     OrderItem:
       type: object
@@ -1095,6 +1397,8 @@ components:
           type: integer
         menuItemName:
           type: string
+        prepTimeMinutes:
+          type: integer
         quantity:
           type: integer
         unitPrice:

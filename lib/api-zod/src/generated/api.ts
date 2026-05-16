@@ -57,6 +57,7 @@ export const ListTablesResponseItem = zod.object({
   "status": zod.enum(['available', 'occupied', 'reserved']),
   "qrCode": zod.string().nullish(),
   "currentOrderId": zod.number().nullish(),
+  "occupiedSince": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 export const ListTablesResponse = zod.array(ListTablesResponseItem)
@@ -85,6 +86,7 @@ export const GetTableResponse = zod.object({
   "status": zod.enum(['available', 'occupied', 'reserved']),
   "qrCode": zod.string().nullish(),
   "currentOrderId": zod.number().nullish(),
+  "occupiedSince": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -109,6 +111,7 @@ export const UpdateTableResponse = zod.object({
   "status": zod.enum(['available', 'occupied', 'reserved']),
   "qrCode": zod.string().nullish(),
   "currentOrderId": zod.number().nullish(),
+  "occupiedSince": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -387,6 +390,7 @@ export const ListOrdersResponseItem = zod.object({
   "id": zod.number(),
   "menuItemId": zod.number(),
   "menuItemName": zod.string(),
+  "prepTimeMinutes": zod.number().optional(),
   "quantity": zod.number(),
   "unitPrice": zod.number(),
   "subtotal": zod.number(),
@@ -436,6 +440,7 @@ export const GetOrderResponse = zod.object({
   "id": zod.number(),
   "menuItemId": zod.number(),
   "menuItemName": zod.string(),
+  "prepTimeMinutes": zod.number().optional(),
   "quantity": zod.number(),
   "unitPrice": zod.number(),
   "subtotal": zod.number(),
@@ -472,6 +477,7 @@ export const UpdateOrderStatusResponse = zod.object({
   "id": zod.number(),
   "menuItemId": zod.number(),
   "menuItemName": zod.string(),
+  "prepTimeMinutes": zod.number().optional(),
   "quantity": zod.number(),
   "unitPrice": zod.number(),
   "subtotal": zod.number(),
@@ -500,6 +506,7 @@ export const GetActiveOrdersResponseItem = zod.object({
   "id": zod.number(),
   "menuItemId": zod.number(),
   "menuItemName": zod.string(),
+  "prepTimeMinutes": zod.number().optional(),
   "quantity": zod.number(),
   "unitPrice": zod.number(),
   "subtotal": zod.number(),
@@ -678,6 +685,179 @@ export const SubmitQuizResponse = zod.object({
   "discountAmount": zod.number(),
   "isFirstVisit": zod.boolean().optional(),
   "tier": zod.string().optional()
+})
+
+
+/**
+ * @summary List notifications (for receptionist/owner)
+ */
+export const ListNotificationsQueryParams = zod.object({
+  "unreadOnly": zod.coerce.boolean().optional()
+})
+
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.number(),
+  "tableId": zod.number(),
+  "tableNumber": zod.number(),
+  "type": zod.enum(['call_waiter', 'request_bill']),
+  "message": zod.string().nullish(),
+  "read": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Customer sends a notification (call waiter / request bill)
+ */
+export const CreateNotificationBody = zod.object({
+  "tableId": zod.number(),
+  "tableNumber": zod.number(),
+  "type": zod.enum(['call_waiter', 'request_bill']),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Mark notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.number(),
+  "tableId": zod.number(),
+  "tableNumber": zod.number(),
+  "type": zod.enum(['call_waiter', 'request_bill']),
+  "message": zod.string().nullish(),
+  "read": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a notification
+ */
+export const DeleteNotificationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  "updated": zod.number().optional()
+})
+
+
+/**
+ * @summary List reviews (owner only)
+ */
+export const ListReviewsResponseItem = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "rating": zod.number(),
+  "comment": zod.string().nullish(),
+  "isPublic": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const ListReviewsResponse = zod.array(ListReviewsResponseItem)
+
+
+/**
+ * @summary Submit a review (post-quiz)
+ */
+export const CreateReviewBody = zod.object({
+  "orderId": zod.number().optional(),
+  "customerId": zod.number().optional(),
+  "customerName": zod.string().optional(),
+  "rating": zod.number(),
+  "comment": zod.string().optional()
+})
+
+
+/**
+ * @summary Toggle public/private for a review
+ */
+export const UpdateReviewParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateReviewBody = zod.object({
+  "isPublic": zod.boolean().optional()
+})
+
+export const UpdateReviewResponse = zod.object({
+  "id": zod.number(),
+  "orderId": zod.number().nullish(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "rating": zod.number(),
+  "comment": zod.string().nullish(),
+  "isPublic": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a review
+ */
+export const DeleteReviewParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Transfer an order to a different table
+ */
+export const TransferOrderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const TransferOrderBody = zod.object({
+  "newTableId": zod.number()
+})
+
+export const TransferOrderResponse = zod.object({
+  "id": zod.number(),
+  "tableId": zod.number(),
+  "tableNumber": zod.number().nullish(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "totalAmount": zod.number(),
+  "discountPercent": zod.number().optional(),
+  "finalAmount": zod.number().optional(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "menuItemId": zod.number(),
+  "menuItemName": zod.string(),
+  "prepTimeMinutes": zod.number().optional(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "subtotal": zod.number(),
+  "notes": zod.string().nullish()
+})).optional(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Change password for a user
+ */
+export const ChangePasswordBody = zod.object({
+  "userId": zod.number(),
+  "newPassword": zod.string()
+})
+
+export const ChangePasswordResponse = zod.object({
+  "ok": zod.boolean().optional()
 })
 
 

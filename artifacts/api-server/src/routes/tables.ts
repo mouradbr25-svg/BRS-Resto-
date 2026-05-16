@@ -6,6 +6,19 @@ const router: IRouter = Router();
 
 router.get("/tables", async (_req, res): Promise<void> => {
   const tables = await db.select().from(tablesTable).orderBy(tablesTable.number);
+
+  // Fetch occupied-since timestamps from current orders
+  const { ordersTable } = await import("@workspace/db");
+  const { eq: eqDrizzle, inArray } = await import("drizzle-orm");
+  const occupiedIds = tables.filter(t => t.currentOrderId != null).map(t => t.currentOrderId as number);
+  let orderMap = new Map<number, string>();
+  if (occupiedIds.length > 0) {
+    const orders = await db.select({ id: ordersTable.id, createdAt: ordersTable.createdAt })
+      .from(ordersTable)
+      .where(inArray(ordersTable.id, occupiedIds));
+    orders.forEach(o => orderMap.set(o.id, o.createdAt.toISOString()));
+  }
+
   res.json(tables.map(t => ({
     id: t.id,
     number: t.number,
@@ -13,6 +26,7 @@ router.get("/tables", async (_req, res): Promise<void> => {
     status: t.status,
     qrCode: t.qrCode,
     currentOrderId: t.currentOrderId,
+    occupiedSince: t.currentOrderId != null ? (orderMap.get(t.currentOrderId) ?? null) : null,
     createdAt: t.createdAt,
   })));
 });

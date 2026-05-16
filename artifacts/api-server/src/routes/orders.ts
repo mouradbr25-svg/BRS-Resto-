@@ -21,6 +21,7 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
       orderId: orderItemsTable.orderId,
       menuItemId: orderItemsTable.menuItemId,
       menuItemName: menuItemsTable.name,
+      prepTimeMinutes: menuItemsTable.prepTimeMinutes,
       quantity: orderItemsTable.quantity,
       unitPrice: orderItemsTable.unitPrice,
       subtotal: orderItemsTable.subtotal,
@@ -54,6 +55,7 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
       id: it.id,
       menuItemId: it.menuItemId,
       menuItemName: it.menuItemName ?? "",
+      prepTimeMinutes: it.prepTimeMinutes ?? 15,
       quantity: it.quantity,
       unitPrice: parseFloat(it.unitPrice),
       subtotal: parseFloat(it.subtotal),
@@ -256,6 +258,45 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
       }
     }
   }
+
+  res.json(await buildOrderResponse(order));
+});
+
+router.post("/orders/:id/transfer", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  const { newTableId } = req.body;
+  if (!newTableId) {
+    res.status(400).json({ error: "newTableId is required" });
+    return;
+  }
+
+  const [existingOrder] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+  if (!existingOrder) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  const oldTableId = existingOrder.tableId;
+
+  // Update order's tableId
+  const [order] = await db
+    .update(ordersTable)
+    .set({ tableId: newTableId })
+    .where(eq(ordersTable.id, id))
+    .returning();
+
+  // Free old table
+  await db
+    .update(tablesTable)
+    .set({ status: "available", currentOrderId: null })
+    .where(eq(tablesTable.id, oldTableId));
+
+  // Occupy new table
+  await db
+    .update(tablesTable)
+    .set({ status: "occupied", currentOrderId: id })
+    .where(eq(tablesTable.id, newTableId));
 
   res.json(await buildOrderResponse(order));
 });
