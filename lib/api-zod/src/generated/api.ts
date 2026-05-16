@@ -682,6 +682,49 @@ export const SubmitQuizResponse = zod.object({
 
 
 /**
+ * @summary Get ingredients for a menu item
+ */
+export const GetMenuItemIngredientsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMenuItemIngredientsResponseItem = zod.object({
+  "id": zod.number(),
+  "menuItemId": zod.number(),
+  "ingredientId": zod.number(),
+  "ingredientName": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string()
+})
+export const GetMenuItemIngredientsResponse = zod.array(GetMenuItemIngredientsResponseItem)
+
+
+/**
+ * @summary Replace ingredient list for a menu item
+ */
+export const SetMenuItemIngredientsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SetMenuItemIngredientsBody = zod.object({
+  "ingredients": zod.array(zod.object({
+  "ingredientId": zod.number(),
+  "quantity": zod.number()
+}))
+})
+
+export const SetMenuItemIngredientsResponseItem = zod.object({
+  "id": zod.number(),
+  "menuItemId": zod.number(),
+  "ingredientId": zod.number(),
+  "ingredientName": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string()
+})
+export const SetMenuItemIngredientsResponse = zod.array(SetMenuItemIngredientsResponseItem)
+
+
+/**
  * @summary Get dashboard summary statistics
  */
 export const GetDashboardStatsResponse = zod.object({

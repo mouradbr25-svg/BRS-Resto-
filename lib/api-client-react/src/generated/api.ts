@@ -37,6 +37,8 @@ import type {
   ListOrdersParams,
   LoginInput,
   MenuItem,
+  MenuItemIngredient,
+  MenuItemIngredientsList,
   MenuItemInput,
   MenuItemUpdate,
   Order,
@@ -2947,6 +2949,155 @@ export const useSubmitQuiz = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSubmitQuizMutationOptions(options));
+    }
+
+export const getGetMenuItemIngredientsUrl = (id: number,) => {
+
+
+
+
+  return `/api/menu-items/${id}/ingredients`
+}
+
+/**
+ * @summary Get ingredients for a menu item
+ */
+export const getMenuItemIngredients = async (id: number, options?: RequestInit): Promise<MenuItemIngredient[]> => {
+
+  return customFetch<MenuItemIngredient[]>(getGetMenuItemIngredientsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMenuItemIngredientsQueryKey = (id: number,) => {
+    return [
+    `/api/menu-items/${id}/ingredients`
+    ] as const;
+    }
+
+
+export const getGetMenuItemIngredientsQueryOptions = <TData = Awaited<ReturnType<typeof getMenuItemIngredients>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMenuItemIngredients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMenuItemIngredientsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMenuItemIngredients>>> = ({ signal }) => getMenuItemIngredients(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMenuItemIngredients>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMenuItemIngredientsQueryResult = NonNullable<Awaited<ReturnType<typeof getMenuItemIngredients>>>
+export type GetMenuItemIngredientsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get ingredients for a menu item
+ */
+
+export function useGetMenuItemIngredients<TData = Awaited<ReturnType<typeof getMenuItemIngredients>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMenuItemIngredients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMenuItemIngredientsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSetMenuItemIngredientsUrl = (id: number,) => {
+
+
+
+
+  return `/api/menu-items/${id}/ingredients`
+}
+
+/**
+ * @summary Replace ingredient list for a menu item
+ */
+export const setMenuItemIngredients = async (id: number,
+    menuItemIngredientsList: MenuItemIngredientsList, options?: RequestInit): Promise<MenuItemIngredient[]> => {
+
+  return customFetch<MenuItemIngredient[]>(getSetMenuItemIngredientsUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      menuItemIngredientsList,)
+  }
+);}
+
+
+
+
+export const getSetMenuItemIngredientsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMenuItemIngredients>>, TError,{id: number;data: BodyType<MenuItemIngredientsList>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setMenuItemIngredients>>, TError,{id: number;data: BodyType<MenuItemIngredientsList>}, TContext> => {
+
+const mutationKey = ['setMenuItemIngredients'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setMenuItemIngredients>>, {id: number;data: BodyType<MenuItemIngredientsList>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setMenuItemIngredients(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetMenuItemIngredientsMutationResult = NonNullable<Awaited<ReturnType<typeof setMenuItemIngredients>>>
+    export type SetMenuItemIngredientsMutationBody = BodyType<MenuItemIngredientsList>
+    export type SetMenuItemIngredientsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Replace ingredient list for a menu item
+ */
+export const useSetMenuItemIngredients = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMenuItemIngredients>>, TError,{id: number;data: BodyType<MenuItemIngredientsList>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setMenuItemIngredients>>,
+        TError,
+        {id: number;data: BodyType<MenuItemIngredientsList>},
+        TContext
+      > => {
+      return useMutation(getSetMenuItemIngredientsMutationOptions(options));
     }
 
 export const getGetDashboardStatsUrl = () => {

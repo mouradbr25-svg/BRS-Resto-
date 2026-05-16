@@ -6,3 +6,4 @@ export * from "./ingredients";
 export * from "./customers";
 export * from "./orders";
 export * from "./quiz";
+export * from "./menuItemIngredients";
