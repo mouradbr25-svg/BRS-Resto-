@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BRS Resto"
+version = "1.0.0"
+id = "artifacts/brs-resto"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19129
+
+[services.development]
+run = "pnpm --filter @workspace/brs-resto run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/brs-resto", "run", "build" ]
+publicDir = "artifacts/brs-resto/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19129"
+BASE_PATH = "/"
