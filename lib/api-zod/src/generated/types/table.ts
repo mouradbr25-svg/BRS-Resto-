@@ -16,5 +16,7 @@ export interface Table {
   qrCode?: string | null;
   /** @nullable */
   currentOrderId?: number | null;
+  /** @nullable */
+  occupiedSince?: string | null;
   createdAt?: string;
 }

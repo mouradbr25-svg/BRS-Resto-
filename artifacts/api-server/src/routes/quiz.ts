@@ -5,17 +5,21 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/quiz/questions", async (_req, res): Promise<void> => {
-  const questions = await db.select().from(quizQuestionsTable)
+  const questions = await db
+    .select()
+    .from(quizQuestionsTable)
     .where(eq(quizQuestionsTable.active, true))
     .orderBy(quizQuestionsTable.id);
-  res.json(questions.map(q => ({
-    id: q.id,
-    question: q.question,
-    options: q.options,
-    correctAnswer: q.correctAnswer,
-    active: q.active,
-    createdAt: q.createdAt,
-  })));
+  res.json(
+    questions.map(q => ({
+      id: q.id,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      active: q.active,
+      createdAt: q.createdAt,
+    }))
+  );
 });
 
 router.post("/quiz/questions", async (req, res): Promise<void> => {
@@ -24,12 +28,10 @@ router.post("/quiz/questions", async (req, res): Promise<void> => {
     res.status(400).json({ error: "question, options, and correctAnswer are required" });
     return;
   }
-  const [q] = await db.insert(quizQuestionsTable).values({
-    question,
-    options,
-    correctAnswer,
-    active: active ?? true,
-  }).returning();
+  const [q] = await db
+    .insert(quizQuestionsTable)
+    .values({ question, options, correctAnswer, active: active ?? true })
+    .returning();
   res.status(201).json(q);
 });
 
@@ -42,8 +44,11 @@ router.patch("/quiz/questions/:id", async (req, res): Promise<void> => {
   if (options != null) updates.options = options;
   if (correctAnswer != null) updates.correctAnswer = correctAnswer;
   if (active != null) updates.active = active;
-
-  const [q] = await db.update(quizQuestionsTable).set(updates).where(eq(quizQuestionsTable.id, id)).returning();
+  const [q] = await db
+    .update(quizQuestionsTable)
+    .set(updates)
+    .where(eq(quizQuestionsTable.id, id))
+    .returning();
   if (!q) {
     res.status(404).json({ error: "Quiz question not found" });
     return;
@@ -69,9 +74,18 @@ router.post("/quiz/submit", async (req, res): Promise<void> => {
     return;
   }
 
-  const questions = await db.select().from(quizQuestionsTable).where(eq(quizQuestionsTable.active, true));
-  const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, customerId));
-  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
+  const questions = await db
+    .select()
+    .from(quizQuestionsTable)
+    .where(eq(quizQuestionsTable.active, true));
+  const [customer] = await db
+    .select()
+    .from(customersTable)
+    .where(eq(customersTable.id, customerId));
+  const [order] = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.id, orderId));
 
   if (!customer || !order) {
     res.status(404).json({ error: "Customer or order not found" });
@@ -81,53 +95,55 @@ router.post("/quiz/submit", async (req, res): Promise<void> => {
   let score = 0;
   for (const answer of answers) {
     const question = questions.find(q => q.id === answer.questionId);
-    if (question && question.correctAnswer === answer.selectedAnswer) {
-      score++;
-    }
+    if (question && question.correctAnswer === answer.selectedAnswer) score++;
   }
 
   const totalQuestions = questions.length;
   const isFirstVisit = customer.isFirstVisit;
+  const orderTotal = parseFloat(order.totalAmount);
+
+  // Tiered discount logic:
+  // 5/5  + first visit OR order >= 2000 DZD → 40%
+  // 5/5  + order 1000–2000 DZD             → 30%
+  // 5/5  + order 500–1000 DZD              → 25%
+  // 5/5  + order < 500 DZD                 → 15%
+  // 3/5  → Free Small Juice (no money discount)
+  // <3/5 → no reward
 
   let discountPercent = 0;
   let tier = "none";
-  if (isFirstVisit) {
-    discountPercent = 40;
-    tier = "first-visit";
-  } else {
-    const orderTotal = parseFloat(order.totalAmount);
-    if (orderTotal >= 10000) {
+  let smallReward: string | null = null;
+
+  if (score === totalQuestions && totalQuestions > 0) {
+    if (isFirstVisit || orderTotal >= 2000) {
+      discountPercent = 40;
+      tier = isFirstVisit ? "first-visit" : "high-value";
+    } else if (orderTotal >= 1000) {
+      discountPercent = 30;
+      tier = "standard";
+    } else if (orderTotal >= 500) {
       discountPercent = 25;
-      tier = "high-spender";
-    } else if (orderTotal >= 5000) {
-      discountPercent = 15;
-      tier = "regular";
+      tier = "entry";
     } else {
-      discountPercent = 10;
-      tier = "basic";
+      discountPercent = 15;
+      tier = "entry";
     }
-    const scoreBonus = Math.round((score / Math.max(totalQuestions, 1)) * 5);
-    discountPercent = Math.min(discountPercent + scoreBonus, 40);
+  } else if (score >= 3) {
+    tier = "partial";
+    smallReward = "Free Small Juice";
   }
 
-  const orderTotal = parseFloat(order.totalAmount);
   const discountAmount = (orderTotal * discountPercent) / 100;
-
-  // Apply discount to order
   const finalAmount = orderTotal - discountAmount;
-  await db.update(ordersTable).set({
-    discountPercent: String(discountPercent),
-    finalAmount: String(finalAmount),
-  }).where(eq(ordersTable.id, orderId));
 
-  res.json({
-    score,
-    totalQuestions,
-    discountPercent,
-    discountAmount,
-    isFirstVisit,
-    tier,
-  });
+  if (discountPercent > 0) {
+    await db
+      .update(ordersTable)
+      .set({ discountPercent: String(discountPercent), finalAmount: String(finalAmount) })
+      .where(eq(ordersTable.id, orderId));
+  }
+
+  res.json({ score, totalQuestions, discountPercent, discountAmount, finalAmount, isFirstVisit, tier, smallReward });
 });
 
 export default router;

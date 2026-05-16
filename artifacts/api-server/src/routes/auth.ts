@@ -47,4 +47,22 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   res.json({ id: user.id, username: user.username, role: user.role, createdAt: user.createdAt });
 });
 
+router.post("/auth/change-password", async (req, res): Promise<void> => {
+  const { userId, newPassword } = req.body;
+  if (!userId || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "userId and newPassword (min 6 chars) are required" });
+    return;
+  }
+  const [user] = await db
+    .update(usersTable)
+    .set({ password: newPassword })
+    .where(eq(usersTable.id, userId))
+    .returning();
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json({ ok: true });
+});
+
 export default router;

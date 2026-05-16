@@ -10,6 +10,7 @@ export interface OrderItem {
   id: number;
   menuItemId: number;
   menuItemName: string;
+  prepTimeMinutes?: number;
   quantity: number;
   unitPrice: number;
   subtotal: number;

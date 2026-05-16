@@ -52,6 +52,8 @@ export interface Table {
   qrCode?: string | null;
   /** @nullable */
   currentOrderId?: number | null;
+  /** @nullable */
+  occupiedSince?: string | null;
   createdAt?: string;
 }
 
@@ -170,10 +172,81 @@ export interface RefillResult {
   message?: string;
 }
 
+export interface ReviewToggleInput {
+  isPublic?: boolean;
+}
+
+export interface OrderTransferInput {
+  newTableId: number;
+}
+
+export interface AuthChangePasswordInput {
+  userId: number;
+  newPassword: string;
+}
+
+export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
+
+
+export const NotificationType = {
+  call_waiter: 'call_waiter',
+  request_bill: 'request_bill',
+} as const;
+
+export interface Notification {
+  id: number;
+  tableId: number;
+  tableNumber: number;
+  type: NotificationType;
+  /** @nullable */
+  message?: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export type NotificationInputType = typeof NotificationInputType[keyof typeof NotificationInputType];
+
+
+export const NotificationInputType = {
+  call_waiter: 'call_waiter',
+  request_bill: 'request_bill',
+} as const;
+
+export interface NotificationInput {
+  tableId: number;
+  tableNumber: number;
+  type: NotificationInputType;
+  message?: string;
+}
+
+export interface Review {
+  id: number;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  customerName?: string | null;
+  rating: number;
+  /** @nullable */
+  comment?: string | null;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+export interface ReviewInput {
+  orderId?: number;
+  customerId?: number;
+  customerName?: string;
+  rating: number;
+  comment?: string;
+}
+
 export interface OrderItem {
   id: number;
   menuItemId: number;
   menuItemName: string;
+  prepTimeMinutes?: number;
   quantity: number;
   unitPrice: number;
   subtotal: number;
@@ -386,6 +459,18 @@ export const ListOrdersStatus = {
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
+
+export type ListNotificationsParams = {
+unreadOnly?: boolean;
+};
+
+export type MarkAllNotificationsRead200 = {
+  updated?: number;
+};
+
+export type ChangePassword200 = {
+  ok?: boolean;
+};
 
 export type GetRevenueStatsParams = {
 period?: GetRevenueStatsPeriod;
