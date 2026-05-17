@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useListTables, getListTablesQueryKey,
   useCreateTable, useUpdateTable, useDeleteTable,
@@ -26,7 +26,32 @@ import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, QrCode, Copy, Check, Pencil, Trash2, Link } from "lucide-react";
+import { Users, Plus, QrCode, Copy, Check, Pencil, Trash2, Link, Clock } from "lucide-react";
+
+// ─── Live elapsed timer for occupied tables ───────────────────────────────────
+function ElapsedTimer({ since }: { since: string }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = new Date(since).getTime();
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [since]);
+  const hh = Math.floor(elapsed / 3600);
+  const mm = Math.floor((elapsed % 3600) / 60);
+  const ss = elapsed % 60;
+  const display = hh > 0
+    ? `${hh}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`
+    : `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  const isLong = elapsed > 3600; // >1hr = warn
+  return (
+    <div className={`flex items-center gap-1 text-xs font-mono font-semibold ${isLong ? "text-destructive animate-pulse" : "text-red-700"}`}>
+      <Clock className="h-3 w-3" />
+      {display}
+    </div>
+  );
+}
 
 // ─── Table Dialog ─────────────────────────────────────────────────────────────
 function TableDialog({
@@ -323,6 +348,11 @@ export default function Tables() {
                     <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
                     {sc.label}
                   </Badge>
+
+                  {/* Live timer for occupied tables */}
+                  {table.status === "occupied" && (table as any).occupiedSince && (
+                    <ElapsedTimer since={(table as any).occupiedSince} />
+                  )}
 
                   {/* Digital ID */}
                   <p className="text-xs font-mono text-muted-foreground">T{String(table.number).padStart(3, "0")}</p>

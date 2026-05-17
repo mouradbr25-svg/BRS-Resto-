@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { AppLayout } from "@/components/layout";
 
-// Pages
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
@@ -15,24 +14,20 @@ import Inventory from "@/pages/inventory";
 import Customers from "@/pages/customers";
 import Quiz from "@/pages/quiz";
 import Analytics from "@/pages/analytics";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
+    queries: { retry: 1, refetchOnWindowFocus: false },
   },
 });
 
-function ProtectedRoute({ component: Component, roles }: { component: React.ComponentType, roles?: string[] }) {
+function ProtectedRoute({ component: Component, roles }: { component: React.ComponentType; roles?: string[] }) {
   const { user, isLoading } = useAuth();
-  
   if (isLoading) return null;
   if (!user) return <Redirect to="/login" />;
   if (roles && !roles.includes(user.role)) return <Redirect to="/dashboard" />;
-  
   return (
     <AppLayout>
       <Component />
@@ -70,6 +65,9 @@ function Router() {
       </Route>
       <Route path="/analytics">
         <ProtectedRoute component={Analytics} roles={["owner"]} />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={Settings} roles={["owner"]} />
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -1,19 +1,17 @@
 import { Router, type IRouter } from "express";
-import { db, tablesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, tablesTable, ordersTable } from "@workspace/db";
+import { eq, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/tables", async (_req, res): Promise<void> => {
   const tables = await db.select().from(tablesTable).orderBy(tablesTable.number);
 
-  // Fetch occupied-since timestamps from current orders
-  const { ordersTable } = await import("@workspace/db");
-  const { eq: eqDrizzle, inArray } = await import("drizzle-orm");
   const occupiedIds = tables.filter(t => t.currentOrderId != null).map(t => t.currentOrderId as number);
-  let orderMap = new Map<number, string>();
+  const orderMap = new Map<number, string>();
   if (occupiedIds.length > 0) {
-    const orders = await db.select({ id: ordersTable.id, createdAt: ordersTable.createdAt })
+    const orders = await db
+      .select({ id: ordersTable.id, createdAt: ordersTable.createdAt })
       .from(ordersTable)
       .where(inArray(ordersTable.id, occupiedIds));
     orders.forEach(o => orderMap.set(o.id, o.createdAt.toISOString()));
