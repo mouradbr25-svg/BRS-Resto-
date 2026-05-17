@@ -21,5 +21,8 @@ export interface MenuItem {
   /** @nullable */
   imageUrl?: string | null;
   prepTimeMinutes?: number;
+  isSpicy?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
   createdAt?: string;
 }

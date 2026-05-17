@@ -114,6 +114,9 @@ export interface MenuItem {
   /** @nullable */
   imageUrl?: string | null;
   prepTimeMinutes?: number;
+  isSpicy?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
   createdAt?: string;
 }
 
@@ -126,6 +129,9 @@ export interface MenuItemInput {
   available?: boolean;
   imageUrl?: string;
   prepTimeMinutes?: number;
+  isSpicy?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
 }
 
 export interface MenuItemUpdate {
@@ -137,6 +143,9 @@ export interface MenuItemUpdate {
   available?: boolean;
   imageUrl?: string;
   prepTimeMinutes?: number;
+  isSpicy?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
 }
 
 export interface Ingredient {

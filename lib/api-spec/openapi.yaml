@@ -1188,6 +1188,12 @@ components:
           type: ["string", "null"]
         prepTimeMinutes:
           type: integer
+        isSpicy:
+          type: boolean
+        isVegan:
+          type: boolean
+        isGlutenFree:
+          type: boolean
         createdAt:
           type: string
 
@@ -1211,6 +1217,12 @@ components:
           type: string
         prepTimeMinutes:
           type: integer
+        isSpicy:
+          type: boolean
+        isVegan:
+          type: boolean
+        isGlutenFree:
+          type: boolean
 
     MenuItemUpdate:
       type: object
@@ -1231,6 +1243,12 @@ components:
           type: string
         prepTimeMinutes:
           type: integer
+        isSpicy:
+          type: boolean
+        isVegan:
+          type: boolean
+        isGlutenFree:
+          type: boolean
 
     # INGREDIENTS
     Ingredient:

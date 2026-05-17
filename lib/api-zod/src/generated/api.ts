@@ -195,6 +195,9 @@ export const ListMenuItemsResponseItem = zod.object({
   "available": zod.boolean(),
   "imageUrl": zod.string().nullish(),
   "prepTimeMinutes": zod.number().optional(),
+  "isSpicy": zod.boolean().optional(),
+  "isVegan": zod.boolean().optional(),
+  "isGlutenFree": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 export const ListMenuItemsResponse = zod.array(ListMenuItemsResponseItem)
@@ -211,7 +214,10 @@ export const CreateMenuItemBody = zod.object({
   "categoryId": zod.number(),
   "available": zod.boolean().optional(),
   "imageUrl": zod.string().optional(),
-  "prepTimeMinutes": zod.number().optional()
+  "prepTimeMinutes": zod.number().optional(),
+  "isSpicy": zod.boolean().optional(),
+  "isVegan": zod.boolean().optional(),
+  "isGlutenFree": zod.boolean().optional()
 })
 
 
@@ -233,6 +239,9 @@ export const GetMenuItemResponse = zod.object({
   "available": zod.boolean(),
   "imageUrl": zod.string().nullish(),
   "prepTimeMinutes": zod.number().optional(),
+  "isSpicy": zod.boolean().optional(),
+  "isVegan": zod.boolean().optional(),
+  "isGlutenFree": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 
@@ -252,7 +261,10 @@ export const UpdateMenuItemBody = zod.object({
   "categoryId": zod.number().optional(),
   "available": zod.boolean().optional(),
   "imageUrl": zod.string().optional(),
-  "prepTimeMinutes": zod.number().optional()
+  "prepTimeMinutes": zod.number().optional(),
+  "isSpicy": zod.boolean().optional(),
+  "isVegan": zod.boolean().optional(),
+  "isGlutenFree": zod.boolean().optional()
 })
 
 export const UpdateMenuItemResponse = zod.object({
@@ -266,6 +278,9 @@ export const UpdateMenuItemResponse = zod.object({
   "available": zod.boolean(),
   "imageUrl": zod.string().nullish(),
   "prepTimeMinutes": zod.number().optional(),
+  "isSpicy": zod.boolean().optional(),
+  "isVegan": zod.boolean().optional(),
+  "isGlutenFree": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 

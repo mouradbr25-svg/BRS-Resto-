@@ -15,4 +15,7 @@ export interface MenuItemInput {
   available?: boolean;
   imageUrl?: string;
   prepTimeMinutes?: number;
+  isSpicy?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
 }

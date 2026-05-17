@@ -12,6 +12,9 @@ export const menuItemsTable = pgTable("menu_items", {
   available: boolean("available").notNull().default(true),
   imageUrl: text("image_url"),
   prepTimeMinutes: integer("prep_time_minutes").notNull().default(15),
+  isSpicy: boolean("is_spicy").notNull().default(false),
+  isVegan: boolean("is_vegan").notNull().default(false),
+  isGlutenFree: boolean("is_gluten_free").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

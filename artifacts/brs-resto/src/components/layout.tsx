@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslation } from "react-i18next";
 import {
   useLogout,
   useListIngredients, getListIngredientsQueryKey,
@@ -10,7 +11,7 @@ import {
 import {
   LayoutDashboard, ChefHat, UtensilsCrossed, ClipboardList,
   Package, Users, LineChart, Gamepad2, LogOut, Menu as MenuIcon,
-  Search, X, Bell, Settings,
+  Search, X, Bell, Settings, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,54 +19,48 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { LANGUAGES, type Language } from "@/i18n/index";
 
-function GlobalSearch() {
-  const [query, setQuery] = useState("");
+// ─── Language Switcher ────────────────────────────────────────────────────────
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [, setLocation] = useLocation();
+  const ref = useRef<HTMLDivElement>(null);
 
-  const { data: ingredients } = useListIngredients({
-    query: { queryKey: getListIngredientsQueryKey() },
-  });
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-  const results: { label: string; href: string; icon: "ingredient" }[] = [];
-  if (query.trim().length >= 2) {
-    const q = query.toLowerCase();
-    ingredients?.forEach(ing => {
-      if (ing.name.toLowerCase().includes(q)) {
-        results.push({ label: `${ing.name} — Inventory`, href: "/inventory", icon: "ingredient" });
-      }
-    });
-  }
+  const current = LANGUAGES.find(l => l.code === i18n.language) ?? LANGUAGES[0];
 
   return (
-    <div className="relative">
-      <div className="relative flex items-center">
-        <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          placeholder="Search inventory..."
-          value={query}
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="pl-9 pr-8 w-52 md:w-64 h-9 bg-muted/50 border-muted focus:bg-background text-sm"
-        />
-        {query && (
-          <button className="absolute right-2" onClick={() => setQuery("")}>
-            <X className="h-3 w-3 text-muted-foreground" />
-          </button>
-        )}
-      </div>
-      {open && results.length > 0 && (
-        <div className="absolute top-10 left-0 z-50 w-full min-w-[220px] bg-popover border rounded-md shadow-lg overflow-hidden">
-          {results.map((r, i) => (
+    <div className="relative" ref={ref}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9"
+        onClick={() => setOpen(v => !v)}
+        title="Language / Langue / اللغة"
+      >
+        <Globe className="h-4 w-4" />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-11 w-36 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden">
+          {LANGUAGES.map(lang => (
             <button
-              key={i}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-accent flex items-center gap-2"
-              onMouseDown={() => { setLocation(r.href); setQuery(""); setOpen(false); }}
+              key={lang.code}
+              onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-accent flex items-center justify-between ${
+                current.code === lang.code ? "bg-primary/10 font-semibold text-primary" : ""
+              }`}
+              dir={lang.dir}
             >
-              <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              {r.label}
+              <span>{lang.label}</span>
+              {current.code === lang.code && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
             </button>
           ))}
         </div>
@@ -74,7 +69,9 @@ function GlobalSearch() {
   );
 }
 
+// ─── Notification Bell ────────────────────────────────────────────────────────
 function NotificationBell() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -115,7 +112,8 @@ function NotificationBell() {
     });
   };
 
-  const typeLabel = (type: string) => type === "call_waiter" ? "Call Waiter" : "Request Bill";
+  const typeLabel = (type: string) =>
+    type === "call_waiter" ? t("notifications.callWaiter") : t("notifications.requestBill");
   const typeColor = (type: string) => type === "call_waiter"
     ? "bg-amber-100 text-amber-800 border-amber-200"
     : "bg-blue-100 text-blue-800 border-blue-200";
@@ -140,37 +138,28 @@ function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-11 w-80 bg-popover border rounded-xl shadow-xl z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b">
-            <h3 className="font-semibold text-sm">Notifications</h3>
+            <h3 className="font-semibold text-sm">{t("notifications.title")}</h3>
             {unread.length > 0 && (
-              <button
-                onClick={handleMarkAll}
-                className="text-xs text-primary hover:underline"
-              >
-                Mark all read
+              <button onClick={handleMarkAll} className="text-xs text-primary hover:underline">
+                {t("notifications.markAllRead")}
               </button>
             )}
           </div>
           <div className="max-h-80 overflow-y-auto divide-y">
             {notifications?.length === 0 && (
-              <div className="p-6 text-center text-sm text-muted-foreground">No notifications</div>
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                {t("notifications.noNotifications")}
+              </div>
             )}
             {notifications?.map(n => (
-              <div
-                key={n.id}
-                className={`px-4 py-3 flex items-start gap-3 ${!n.read ? "bg-primary/5" : ""}`}
-              >
+              <div key={n.id} className={`px-4 py-3 flex items-start gap-3 ${!n.read ? "bg-primary/5" : ""}`}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <Badge
-                      variant="outline"
-                      className={`text-xs px-1.5 py-0 ${typeColor(n.type)}`}
-                    >
+                    <Badge variant="outline" className={`text-xs px-1.5 py-0 ${typeColor(n.type)}`}>
                       {typeLabel(n.type)}
                     </Badge>
                     <span className="text-xs font-medium">Table {n.tableNumber}</span>
-                    {!n.read && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                    )}
+                    {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />}
                   </div>
                   {n.message && <p className="text-xs text-muted-foreground line-clamp-1">{n.message}</p>}
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -179,17 +168,11 @@ function NotificationBell() {
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   {!n.read && (
-                    <button
-                      onClick={() => handleMarkOne(n.id)}
-                      className="text-[11px] text-primary hover:underline"
-                    >
-                      Read
+                    <button onClick={() => handleMarkOne(n.id)} className="text-[11px] text-primary hover:underline">
+                      {t("notifications.read")}
                     </button>
                   )}
-                  <button
-                    onClick={() => handleDismiss(n.id)}
-                    className="text-[11px] text-muted-foreground hover:text-destructive"
-                  >
+                  <button onClick={() => handleDismiss(n.id)} className="text-[11px] text-muted-foreground hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </div>
@@ -202,10 +185,69 @@ function NotificationBell() {
   );
 }
 
+// ─── Global Search ────────────────────────────────────────────────────────────
+function GlobalSearch() {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const { data: ingredients } = useListIngredients({
+    query: { queryKey: getListIngredientsQueryKey() },
+  });
+
+  const results: { label: string; href: string }[] = [];
+  if (query.trim().length >= 2) {
+    const q = query.toLowerCase();
+    ingredients?.forEach(ing => {
+      if (ing.name.toLowerCase().includes(q))
+        results.push({ label: `${ing.name} — ${t("nav.inventory")}`, href: "/inventory" });
+    });
+  }
+
+  return (
+    <div className="relative">
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder={`${t("common.search")}...`}
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          className="pl-9 pr-8 w-52 md:w-64 h-9 bg-muted/50 border-muted focus:bg-background text-sm"
+        />
+        {query && (
+          <button className="absolute right-2" onClick={() => setQuery("")}>
+            <X className="h-3 w-3 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div className="absolute top-10 left-0 z-50 w-full min-w-[220px] bg-popover border rounded-md shadow-lg overflow-hidden">
+          {results.map((r, i) => (
+            <button
+              key={i}
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-accent flex items-center gap-2"
+              onMouseDown={() => { setLocation(r.href); setQuery(""); setOpen(false); }}
+            >
+              <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── App Layout ───────────────────────────────────────────────────────────────
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const { user, setUser } = useAuth();
   const [location, setLocation] = useLocation();
   const logout = useLogout();
+  const qc = useQueryClient();
 
   const { data: ingredients } = useListIngredients({
     query: { queryKey: getListIngredientsQueryKey() },
@@ -219,16 +261,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { label: "Dashboard",  href: "/dashboard",  icon: LayoutDashboard, roles: ["owner"] },
-    { label: "Orders",     href: "/orders",      icon: ClipboardList,   roles: ["owner", "receptionist"] },
-    { label: "Tables",     href: "/tables",      icon: UtensilsCrossed, roles: ["owner", "receptionist"] },
-    { label: "Menu",       href: "/menu",        icon: ChefHat,         roles: ["owner", "receptionist"] },
-    { label: "Inventory",  href: "/inventory",   icon: Package,         roles: ["owner"],
+    { key: "dashboard",  href: "/dashboard",  icon: LayoutDashboard, roles: ["owner"] },
+    { key: "orders",     href: "/orders",      icon: ClipboardList,   roles: ["owner", "receptionist"] },
+    { key: "tables",     href: "/tables",      icon: UtensilsCrossed, roles: ["owner", "receptionist"] },
+    { key: "menu",       href: "/menu",        icon: ChefHat,         roles: ["owner", "receptionist"] },
+    { key: "inventory",  href: "/inventory",   icon: Package,         roles: ["owner"],
       badge: lowStockCount > 0 ? lowStockCount : undefined },
-    { label: "Customers",  href: "/customers",   icon: Users,           roles: ["owner", "receptionist"] },
-    { label: "Quiz",       href: "/quiz",        icon: Gamepad2,        roles: ["owner"] },
-    { label: "Analytics",  href: "/analytics",   icon: LineChart,       roles: ["owner"] },
-    { label: "Settings",   href: "/settings",    icon: Settings,        roles: ["owner"] },
+    { key: "customers",  href: "/customers",   icon: Users,           roles: ["owner", "receptionist"] },
+    { key: "quiz",       href: "/quiz",        icon: Gamepad2,        roles: ["owner"] },
+    { key: "analytics",  href: "/analytics",   icon: LineChart,       roles: ["owner"] },
+    { key: "settings",   href: "/settings",    icon: Settings,        roles: ["owner"] },
   ];
 
   const visibleNavItems = navItems.filter(
@@ -248,7 +290,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           return (
             <Link key={item.href} href={item.href}>
               <div
-                data-testid={`nav-${item.label.toLowerCase()}`}
+                data-testid={`nav-${item.key}`}
                 className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-md transition-colors cursor-pointer ${
                   isActive
                     ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
@@ -257,7 +299,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <span className="flex items-center gap-3">
                   <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {item.label}
+                  {t(`nav.${item.key}` as any)}
                 </span>
                 {item.badge != null && (
                   <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
@@ -277,7 +319,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-medium truncate">{user?.username}</p>
-            <p className="text-xs text-sidebar-foreground/60 capitalize">{user?.role}</p>
+            <p className="text-xs text-sidebar-foreground/60 capitalize">
+              {t(`auth.role.${user?.role}` as any)}
+            </p>
           </div>
         </div>
         <Button
@@ -287,7 +331,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4 mr-3" />
-          Logout
+          {t("nav.logout")}
         </Button>
       </div>
     </div>
@@ -319,10 +363,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <GlobalSearch />
           </div>
 
-          <div className="flex items-center gap-2 ml-3">
+          <div className="flex items-center gap-1 ml-3">
+            <LanguageSwitcher />
             <NotificationBell />
-            <Badge variant="outline" className="capitalize text-xs hidden md:flex">
-              {user?.role}
+            <Badge variant="outline" className="capitalize text-xs hidden md:flex ml-1">
+              {t(`auth.role.${user?.role}` as any)}
             </Badge>
           </div>
         </header>
