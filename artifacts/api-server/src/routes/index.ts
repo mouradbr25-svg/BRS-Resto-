@@ -10,6 +10,8 @@ import customersRouter from "./customers";
 import ordersRouter from "./orders";
 import quizRouter from "./quiz";
 import analyticsRouter from "./analytics";
+import notificationsRouter from "./notifications";
+import reviewsRouter from "./reviews";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(customersRouter);
 router.use(ordersRouter);
 router.use(quizRouter);
 router.use(analyticsRouter);
+router.use(notificationsRouter);
+router.use(reviewsRouter);
 
 export default router;
