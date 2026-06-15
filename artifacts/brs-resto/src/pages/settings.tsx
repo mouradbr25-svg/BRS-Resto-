@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useListMenuItems, getListMenuItemsQueryKey,
   useListCategories, getListCategoriesQueryKey,
@@ -6,6 +6,7 @@ import {
   useChangePassword,
 } from "@workspace/api-client-react";
 import type { MenuItem } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDZD } from "@/lib/format";
 import {
   DollarSign, Lock, Pencil, Check, X, Plus, Trash2, ChefHat,
-  ImageIcon, Flame, Leaf, Wheat,
+  ImageIcon, Flame, Leaf, Wheat, Upload, XCircle,
 } from "lucide-react";
 
 // ─── Inline price editor row ──────────────────────────────────────────────────
@@ -130,6 +131,7 @@ function MenuItemDialog({ item, onClose }: { item?: MenuItem; onClose: () => voi
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey() } });
   const createItem = useCreateMenuItem();
   const updateItem = useUpdateMenuItem();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MenuItemFormValues>({
     defaultValues: {
@@ -148,6 +150,18 @@ function MenuItemDialog({ item, onClose }: { item?: MenuItem; onClose: () => voi
   });
 
   const imageUrl = watch("imageUrl");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast({ title: "Image trop grande (max 3 Mo)", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => setValue("imageUrl", ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const onSubmit = (values: MenuItemFormValues) => {
     const data = {
@@ -222,16 +236,51 @@ function MenuItemDialog({ item, onClose }: { item?: MenuItem; onClose: () => voi
         </div>
       </div>
 
-      {/* Image URL */}
-      <div className="space-y-1.5">
-        <Label className="flex items-center gap-1.5"><ImageIcon className="h-3.5 w-3.5" /> URL de l'image</Label>
-        <Input {...register("imageUrl")} placeholder="https://example.com/image.jpg" />
-        {imageUrl && (
-          <div className="relative h-28 rounded-lg overflow-hidden bg-muted border">
-            <img src={imageUrl} alt="Aperçu" className="w-full h-full object-cover"
-              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 text-xs text-muted-foreground [&:has(+img)]:hidden" />
+      {/* Image Upload */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5"><ImageIcon className="h-3.5 w-3.5" /> Photo du plat</Label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {imageUrl ? (
+          <div className="relative h-36 rounded-xl overflow-hidden bg-muted border-2 border-primary/20 group">
+            <img
+              src={imageUrl}
+              alt="Aperçu"
+              className="w-full h-full object-cover"
+              onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-white text-foreground text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-muted transition-colors"
+              >
+                <Upload className="h-3.5 w-3.5" /> Changer
+              </button>
+              <button
+                type="button"
+                onClick={() => setValue("imageUrl", "")}
+                className="bg-destructive text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-destructive/90 transition-colors"
+              >
+                <XCircle className="h-3.5 w-3.5" /> Supprimer
+              </button>
+            </div>
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full h-28 border-2 border-dashed border-muted-foreground/30 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer text-muted-foreground"
+          >
+            <Upload className="h-6 w-6" />
+            <span className="text-sm font-medium">Choisir depuis la galerie</span>
+            <span className="text-xs">JPG, PNG, WebP — max 3 Mo</span>
+          </button>
         )}
       </div>
 
@@ -471,13 +520,18 @@ function CredentialCard({ userId, username, role }: { userId: number; username: 
 }
 
 function CredentialsTab() {
+  const { user } = useAuth();
+  const accounts = [
+    { userId: user?.id ?? 1, username: user?.username ?? "owner", role: "owner" },
+    { userId: 2, username: "receptionist", role: "receptionist" },
+  ];
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Modifiez les mots de passe des comptes du personnel.</p>
-      {[
-        { userId: 1, username: "owner", role: "owner" },
-        { userId: 2, username: "receptionist", role: "receptionist" },
-      ].map(acc => <CredentialCard key={acc.userId} {...acc} />)}
+      <p className="text-sm text-muted-foreground">
+        Modifiez les mots de passe des comptes du personnel. Les changements prennent effet à la prochaine connexion.
+      </p>
+      {accounts.map(acc => <CredentialCard key={acc.userId} {...acc} />)}
     </div>
   );
 }

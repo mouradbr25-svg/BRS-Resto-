@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useListTables, getListTablesQueryKey,
   useCreateTable, useUpdateTable, useDeleteTable,
@@ -6,6 +6,7 @@ import {
 import type { Table } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +27,7 @@ import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, QrCode, Copy, Check, Pencil, Trash2, Link, Clock } from "lucide-react";
+import { Users, Plus, QrCode, Copy, Check, Pencil, Trash2, Link, Clock, Printer } from "lucide-react";
 
 // ─── Live elapsed timer for occupied tables ───────────────────────────────────
 function ElapsedTimer({ since }: { since: string }) {
@@ -161,20 +162,14 @@ function TableDialog({
   );
 }
 
-// ─── QR / URL Drawer ──────────────────────────────────────────────────────────
+// ─── QR / URL Panel ───────────────────────────────────────────────────────────
 function TableQRPanel({
-  table,
-  open,
-  onClose,
-}: {
-  table: Table | null;
-  open: boolean;
-  onClose: () => void;
-}) {
+  table, open, onClose,
+}: { table: Table | null; open: boolean; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   if (!table) return null;
 
-  const portalUrl = `${window.location.origin}/portal/table/${table.number}`;
+  const portalUrl = `${window.location.origin}/portal/${table.id}`;
 
   const copyUrl = () => {
     navigator.clipboard.writeText(portalUrl).then(() => {
@@ -189,54 +184,113 @@ function TableQRPanel({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5" />
-            Table {table.number} — Digital ID
+            Table {table.number} — QR Code
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* QR Code Visual */}
-          <div className="bg-muted rounded-xl p-6 flex flex-col items-center gap-3 text-center">
-            <div className="w-36 h-36 bg-white rounded-lg border-2 border-border flex items-center justify-center relative">
-              {/* Simple QR placeholder grid — purely visual */}
-              <div className="grid grid-cols-7 gap-0.5 p-2">
-                {Array.from({ length: 49 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`w-3.5 h-3.5 rounded-sm ${
-                      [0,1,2,3,4,5,6,7,13,14,20,21,27,28,34,35,41,42,43,44,45,46,48,15,16,17,18,19,22,30,38].includes(i)
-                        ? "bg-foreground"
-                        : "bg-transparent"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono">Table ID: T{String(table.number).padStart(3, "0")}</p>
+          <div className="bg-white rounded-xl p-6 flex flex-col items-center gap-3 border-2 border-muted">
+            <QRCodeSVG
+              value={portalUrl}
+              size={180}
+              bgColor="#ffffff"
+              fgColor="#1a1a1a"
+              level="M"
+            />
+            <p className="text-xs text-muted-foreground font-mono font-semibold">Table #{table.number}</p>
+            <p className="text-xs text-muted-foreground text-center">Scannez pour commander</p>
           </div>
-
-          {/* Portal URL */}
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs">
-              <Link className="h-3.5 w-3.5" />
-              Customer Portal URL
+              <Link className="h-3.5 w-3.5" /> Lien du portail
             </Label>
             <div className="flex gap-2">
-              <Input
-                readOnly
-                value={portalUrl}
-                className="text-xs font-mono bg-muted/60 flex-1"
-                data-testid={`input-table-url-${table.id}`}
-              />
+              <Input readOnly value={portalUrl} className="text-xs font-mono bg-muted/60 flex-1" data-testid={`input-table-url-${table.id}`} />
               <Button size="icon" variant="outline" onClick={copyUrl} data-testid="button-copy-url">
                 {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Customers scan or visit this URL to place orders from Table {table.number}.
-            </p>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose}>Fermer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Print QR Sheet (3 tables) ────────────────────────────────────────────────
+function PrintQRSheet({
+  tables, open, onClose,
+}: { tables: Table[]; open: boolean; onClose: () => void }) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const first3 = tables.slice(0, 3);
+
+  const handlePrint = () => {
+    const content = printRef.current;
+    if (!content) return;
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>QR Codes - BRS Resto</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Georgia, serif; background: #fff; padding: 32px; }
+        .sheet { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+        .card { border: 2px solid #e2e8f0; border-radius: 16px; padding: 28px 24px;
+                width: 240px; text-align: center; page-break-inside: avoid; }
+        .logo { font-size: 22px; font-weight: bold; color: #c0392b; margin-bottom: 4px; }
+        .subtitle { font-size: 11px; color: #888; margin-bottom: 20px; }
+        .table-label { font-size: 18px; font-weight: bold; margin-top: 16px; }
+        .instruction { font-size: 11px; color: #555; margin-top: 8px; line-height: 1.5; }
+        .url { font-size: 9px; color: #999; margin-top: 10px; word-break: break-all; font-family: monospace; }
+        @media print { body { padding: 16px; } .sheet { gap: 16px; } }
+      </style></head><body>
+      ${content.innerHTML}
+      <script>window.onload = () => { window.print(); window.close(); }<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Printer className="h-5 w-5" /> Feuille QR — 3 tables
+          </DialogTitle>
+        </DialogHeader>
+
+        <div ref={printRef}>
+          <div className="sheet" style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
+            {first3.map(table => {
+              const portalUrl = `${window.location.origin}/portal/${table.id}`;
+              return (
+                <div key={table.id} className="card" style={{ border: "2px solid #e2e8f0", borderRadius: "16px", padding: "24px 20px", width: "220px", textAlign: "center" }}>
+                  <div className="logo" style={{ fontSize: "20px", fontWeight: "bold", color: "#c0392b", marginBottom: "2px" }}>BRS Resto</div>
+                  <div className="subtitle" style={{ fontSize: "10px", color: "#888", marginBottom: "16px" }}>Restaurant Premium</div>
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <QRCodeSVG value={portalUrl} size={150} bgColor="#ffffff" fgColor="#1a1a1a" level="M" />
+                  </div>
+                  <div className="table-label" style={{ fontSize: "16px", fontWeight: "bold", marginTop: "14px" }}>Table #{table.number}</div>
+                  <div className="instruction" style={{ fontSize: "11px", color: "#555", marginTop: "6px", lineHeight: 1.5 }}>
+                    Scannez pour commander<br />امسح للطلب
+                  </div>
+                  <div className="url" style={{ fontSize: "8px", color: "#aaa", marginTop: "8px", wordBreak: "break-all", fontFamily: "monospace" }}>
+                    {portalUrl}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose}>Fermer</Button>
+          <Button onClick={handlePrint} className="gap-2">
+            <Printer className="h-4 w-4" /> Imprimer / Enregistrer PDF
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -256,6 +310,7 @@ export default function Tables() {
   const { toast } = useToast();
   const [tableDialog, setTableDialog] = useState<{ open: boolean; item?: Table }>({ open: false });
   const [qrPanel, setQrPanel] = useState<{ open: boolean; item: Table | null }>({ open: false, item: null });
+  const [printOpen, setPrintOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Table | null>(null);
 
   const { data: tables, isLoading } = useListTables({
@@ -288,12 +343,21 @@ export default function Tables() {
           <h1 className="text-3xl font-serif font-bold text-foreground">Tables</h1>
           <p className="text-muted-foreground mt-1">Manage dining areas. Each table has a unique customer portal link.</p>
         </div>
-        <Button
-          onClick={() => setTableDialog({ open: true })}
-          data-testid="button-add-table"
-        >
-          <Plus className="h-4 w-4 mr-1.5" /> Add Table
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setPrintOpen(true)}
+            className="gap-1.5"
+          >
+            <Printer className="h-4 w-4" /> QR Tables
+          </Button>
+          <Button
+            onClick={() => setTableDialog({ open: true })}
+            data-testid="button-add-table"
+          >
+            <Plus className="h-4 w-4 me-1.5" /> Ajouter
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -419,6 +483,11 @@ export default function Tables() {
         open={qrPanel.open}
         table={qrPanel.item}
         onClose={() => setQrPanel({ open: false, item: null })}
+      />
+      <PrintQRSheet
+        tables={tables ?? []}
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
