@@ -14,7 +14,7 @@ A high-end Restaurant Management SaaS (POS & CRM) tailored for the Algerian mark
 
 ## Default Credentials
 
-- **Owner**: `owner` / `admin123` (full access to all pages)
+- **Owner**: `Mouradx` / `BRSRESTOx025` (full access to all pages)
 - **Receptionist**: `receptionist` / `admin123` (orders, tables, menu, customers only)
 
 ## Stack
