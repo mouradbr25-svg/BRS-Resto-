@@ -184,3 +184,46 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ─── RTL Global Fixes ─────────────────────────────────────────────────────── */
+[dir="rtl"] {
+  font-family: 'Noto Sans Arabic', 'Inter', sans-serif;
+}
+
+/* Flip start-border stat cards in RTL */
+[dir="rtl"] .rtl-flip-border-s {
+  border-left-width: 0;
+  border-right-width: 4px;
+}
+
+/* Ensure input icons flip side */
+[dir="rtl"] .input-icon-start {
+  left: auto;
+  right: 0.75rem;
+}
+[dir="rtl"] .input-icon-start ~ input {
+  padding-left: 0.5rem;
+  padding-right: 2.25rem;
+}
+
+/* Sidebar border direction: always on the logical end */
+[dir="rtl"] aside.border-r {
+  border-right-width: 0;
+  border-left-width: 1px;
+}
+
+/* Smooth layout direction transitions */
+html {
+  transition: direction 0.1s ease;
+}
+
+/* Notification panel position in RTL */
+[dir="rtl"] .notif-panel {
+  right: auto;
+  left: 0;
+}
+
+/* Fix lucide icon flip where needed */
+[dir="rtl"] .rtl-mirror {
+  transform: scaleX(-1);
+}
