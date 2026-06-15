@@ -15,6 +15,7 @@ import Customers from "@/pages/customers";
 import Quiz from "@/pages/quiz";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import OrderTracker from "@/pages/order-tracker";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/track/:id" component={OrderTracker} />
       <Route path="/">
         <Redirect to="/dashboard" />
       </Route>
