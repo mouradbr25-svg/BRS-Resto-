@@ -13,6 +13,7 @@ export const OrderStatus = {
   pending: 'pending',
   preparing: 'preparing',
   served: 'served',
+  unpaid: 'unpaid',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;

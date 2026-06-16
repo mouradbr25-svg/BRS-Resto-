@@ -17,6 +17,7 @@ export interface Order {
   customerId?: number | null;
   /** @nullable */
   customerName?: string | null;
+  isWalkin?: boolean;
   status: OrderStatus;
   totalAmount: number;
   discountPercent?: number;

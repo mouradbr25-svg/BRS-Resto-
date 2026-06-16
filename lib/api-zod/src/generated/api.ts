@@ -387,7 +387,7 @@ export const RefillIngredientsResponse = zod.object({
  * @summary List orders
  */
 export const ListOrdersQueryParams = zod.object({
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']).optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']).optional(),
   "tableId": zod.coerce.number().optional()
 })
 
@@ -397,7 +397,8 @@ export const ListOrdersResponseItem = zod.object({
   "tableNumber": zod.number().nullish(),
   "customerId": zod.number().nullish(),
   "customerName": zod.string().nullish(),
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "isWalkin": zod.boolean().optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']),
   "totalAmount": zod.number(),
   "discountPercent": zod.number().optional(),
   "finalAmount": zod.number().optional(),
@@ -422,7 +423,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  * @summary Create an order
  */
 export const CreateOrderBody = zod.object({
-  "tableId": zod.number(),
+  "tableId": zod.number().optional(),
   "customerId": zod.number().optional(),
   "items": zod.array(zod.object({
   "menuItemId": zod.number(),
@@ -447,7 +448,8 @@ export const GetOrderResponse = zod.object({
   "tableNumber": zod.number().nullish(),
   "customerId": zod.number().nullish(),
   "customerName": zod.string().nullish(),
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "isWalkin": zod.boolean().optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']),
   "totalAmount": zod.number(),
   "discountPercent": zod.number().optional(),
   "finalAmount": zod.number().optional(),
@@ -475,7 +477,7 @@ export const UpdateOrderStatusParams = zod.object({
 })
 
 export const UpdateOrderStatusBody = zod.object({
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled'])
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled'])
 })
 
 export const UpdateOrderStatusResponse = zod.object({
@@ -484,7 +486,8 @@ export const UpdateOrderStatusResponse = zod.object({
   "tableNumber": zod.number().nullish(),
   "customerId": zod.number().nullish(),
   "customerName": zod.string().nullish(),
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "isWalkin": zod.boolean().optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']),
   "totalAmount": zod.number(),
   "discountPercent": zod.number().optional(),
   "finalAmount": zod.number().optional(),
@@ -513,7 +516,8 @@ export const GetActiveOrdersResponseItem = zod.object({
   "tableNumber": zod.number().nullish(),
   "customerId": zod.number().nullish(),
   "customerName": zod.string().nullish(),
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "isWalkin": zod.boolean().optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']),
   "totalAmount": zod.number(),
   "discountPercent": zod.number().optional(),
   "finalAmount": zod.number().optional(),
@@ -843,7 +847,8 @@ export const TransferOrderResponse = zod.object({
   "tableNumber": zod.number().nullish(),
   "customerId": zod.number().nullish(),
   "customerName": zod.string().nullish(),
-  "status": zod.enum(['pending', 'preparing', 'served', 'completed', 'cancelled']),
+  "isWalkin": zod.boolean().optional(),
+  "status": zod.enum(['pending', 'preparing', 'served', 'unpaid', 'completed', 'cancelled']),
   "totalAmount": zod.number(),
   "discountPercent": zod.number().optional(),
   "finalAmount": zod.number().optional(),
@@ -927,7 +932,10 @@ export const GetDashboardStatsResponse = zod.object({
   "weekRevenue": zod.number().optional(),
   "monthRevenue": zod.number().optional(),
   "totalOrders": zod.number(),
+  "todayOrdersCount": zod.number().optional(),
+  "todayCustomersCount": zod.number().optional(),
   "activeOrders": zod.number(),
+  "unpaidCount": zod.number().optional(),
   "totalCustomers": zod.number(),
   "lowStockCount": zod.number(),
   "avgOrderValue": zod.number(),

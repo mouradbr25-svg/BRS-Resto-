@@ -22,7 +22,16 @@ router.get("/analytics/dashboard", async (_req, res): Promise<void> => {
   const weekRevenue = weekOrders.reduce((sum, o) => sum + parseFloat(o.finalAmount), 0);
   const monthRevenue = monthOrders.reduce((sum, o) => sum + parseFloat(o.finalAmount), 0);
 
+  // Today's all orders (not cancelled)
+  const todayAllOrders = allOrders.filter(o => new Date(o.createdAt) >= startOfDay && o.status !== "cancelled");
+  const todayOrdersCount = todayAllOrders.length;
+  // Today's customers: unique registered + walk-in orders
+  const todayRegisteredCustomers = new Set(todayAllOrders.filter(o => o.customerId).map(o => o.customerId));
+  const todayWalkinCount = todayAllOrders.filter(o => !o.customerId).length;
+  const todayCustomersCount = todayRegisteredCustomers.size + todayWalkinCount;
+
   const activeOrders = allOrders.filter(o => o.status === "pending" || o.status === "preparing").length;
+  const unpaidCount = allOrders.filter(o => o.status === "unpaid").length;
   const avgOrderValue = completedOrders.length > 0
     ? completedOrders.reduce((sum, o) => sum + parseFloat(o.finalAmount), 0) / completedOrders.length
     : 0;
@@ -42,7 +51,10 @@ router.get("/analytics/dashboard", async (_req, res): Promise<void> => {
     weekRevenue,
     monthRevenue,
     totalOrders: allOrders.length,
+    todayOrdersCount,
+    todayCustomersCount,
     activeOrders,
+    unpaidCount,
     totalCustomers: customers.length,
     lowStockCount,
     avgOrderValue,
@@ -131,7 +143,7 @@ router.get("/analytics/top-items", async (_req, res): Promise<void> => {
 router.get("/analytics/orders-by-status", async (_req, res): Promise<void> => {
   const orders = await db.select().from(ordersTable);
   const statusCounts = new Map<string, number>();
-  const statuses = ["pending", "preparing", "served", "completed", "cancelled"];
+  const statuses = ["pending", "preparing", "served", "unpaid", "completed", "cancelled"];
   for (const s of statuses) statusCounts.set(s, 0);
   for (const o of orders) {
     statusCounts.set(o.status, (statusCounts.get(o.status) ?? 0) + 1);
