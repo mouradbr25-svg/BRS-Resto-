@@ -11,7 +11,10 @@ export interface DashboardStats {
   weekRevenue?: number;
   monthRevenue?: number;
   totalOrders: number;
+  todayOrdersCount?: number;
+  todayCustomersCount?: number;
   activeOrders: number;
+  unpaidCount?: number;
   totalCustomers: number;
   lowStockCount: number;
   avgOrderValue: number;

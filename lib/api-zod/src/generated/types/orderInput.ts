@@ -8,7 +8,7 @@
 import type { OrderItemInput } from './orderItemInput';
 
 export interface OrderInput {
-  tableId: number;
+  tableId?: number;
   customerId?: number;
   items: OrderItemInput[];
   notes?: string;

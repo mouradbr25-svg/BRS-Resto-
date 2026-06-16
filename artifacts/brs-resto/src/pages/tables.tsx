@@ -332,9 +332,10 @@ export default function Tables() {
     );
   };
 
-  const available = tables?.filter(t => t.status === "available").length ?? 0;
-  const occupied  = tables?.filter(t => t.status === "occupied").length ?? 0;
-  const reserved  = tables?.filter(t => t.status === "reserved").length ?? 0;
+  const realTables = tables?.filter(t => t.number !== 0) ?? [];
+  const available = realTables.filter(t => t.status === "available").length;
+  const occupied  = realTables.filter(t => t.status === "occupied").length;
+  const reserved  = realTables.filter(t => t.status === "reserved").length;
 
   return (
     <div className="space-y-6">
@@ -379,7 +380,7 @@ export default function Tables() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {tables?.map(table => {
+          {realTables.map(table => {
             const sc = STATUS_CONFIG[table.status] ?? STATUS_CONFIG.available;
             return (
               <Card

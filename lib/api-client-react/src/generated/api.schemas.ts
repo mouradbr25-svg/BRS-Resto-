@@ -276,6 +276,7 @@ export const OrderStatus = {
   pending: 'pending',
   preparing: 'preparing',
   served: 'served',
+  unpaid: 'unpaid',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
@@ -289,6 +290,7 @@ export interface Order {
   customerId?: number | null;
   /** @nullable */
   customerName?: string | null;
+  isWalkin?: boolean;
   status: OrderStatus;
   totalAmount: number;
   discountPercent?: number;
@@ -301,7 +303,7 @@ export interface Order {
 }
 
 export interface OrderInput {
-  tableId: number;
+  tableId?: number;
   customerId?: number;
   items: OrderItemInput[];
   notes?: string;
@@ -315,6 +317,7 @@ export const OrderStatusUpdateStatus = {
   pending: 'pending',
   preparing: 'preparing',
   served: 'served',
+  unpaid: 'unpaid',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
@@ -423,7 +426,10 @@ export interface DashboardStats {
   weekRevenue?: number;
   monthRevenue?: number;
   totalOrders: number;
+  todayOrdersCount?: number;
+  todayCustomersCount?: number;
   activeOrders: number;
+  unpaidCount?: number;
   totalCustomers: number;
   lowStockCount: number;
   avgOrderValue: number;
@@ -465,6 +471,7 @@ export const ListOrdersStatus = {
   pending: 'pending',
   preparing: 'preparing',
   served: 'served',
+  unpaid: 'unpaid',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;

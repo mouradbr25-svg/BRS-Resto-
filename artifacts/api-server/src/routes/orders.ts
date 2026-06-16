@@ -14,6 +14,12 @@ import { computeLoyaltyTier } from "./customers";
 
 const router: IRouter = Router();
 
+// ID of the Comptoir virtual table (number=0) for walk-in orders
+async function getComptoirTableId(): Promise<number | null> {
+  const [t] = await db.select().from(tablesTable).where(eq(tablesTable.number, 0));
+  return t?.id ?? null;
+}
+
 async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
   const rawItems = await db
     .select({
@@ -44,12 +50,15 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
     if (clientPart) customerName = clientPart.replace("Client: ", "").trim();
   }
 
+  const isWalkin = order.notes?.includes("Vente directe") || table?.number === 0;
+
   return {
     id: order.id,
     tableId: order.tableId,
-    tableNumber: table?.number ?? null,
+    tableNumber: table?.number === 0 ? null : (table?.number ?? null),
     customerId: order.customerId,
     customerName,
+    isWalkin: isWalkin ?? false,
     status: order.status,
     totalAmount: parseFloat(order.totalAmount),
     discountPercent: parseFloat(order.discountPercent),
@@ -129,10 +138,24 @@ router.get("/orders", async (req, res): Promise<void> => {
 });
 
 router.post("/orders", async (req, res): Promise<void> => {
-  const { tableId, customerId, items, notes, discountPercent } = req.body;
-  if (!tableId || !items || !Array.isArray(items) || items.length === 0) {
-    res.status(400).json({ error: "tableId and items are required" });
+  const { tableId: rawTableId, customerId, items, notes, discountPercent } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: "items are required" });
     return;
+  }
+
+  // Walk-in orders use the Comptoir virtual table (number=0)
+  const isWalkin = !rawTableId || notes?.includes("Vente directe");
+  let tableId: number;
+  if (isWalkin) {
+    const comptoirId = await getComptoirTableId();
+    if (!comptoirId) {
+      res.status(500).json({ error: "Comptoir table not found" });
+      return;
+    }
+    tableId = comptoirId;
+  } else {
+    tableId = rawTableId;
   }
 
   let totalAmount = 0;
@@ -182,11 +205,13 @@ router.post("/orders", async (req, res): Promise<void> => {
     });
   }
 
-  // Mark table as occupied
-  await db
-    .update(tablesTable)
-    .set({ status: "occupied", currentOrderId: order.id })
-    .where(eq(tablesTable.id, tableId));
+  // Only mark real tables as occupied (not Comptoir)
+  if (!isWalkin) {
+    await db
+      .update(tablesTable)
+      .set({ status: "occupied", currentOrderId: order.id })
+      .where(eq(tablesTable.id, tableId));
+  }
 
   const result = await buildOrderResponse(order);
   res.status(201).json(result);
@@ -212,7 +237,6 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  // Get previous status before updating
   const [existingOrder] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
   if (!existingOrder) {
     res.status(404).json({ error: "Order not found" });
@@ -226,19 +250,20 @@ router.patch("/orders/:id", async (req, res): Promise<void> => {
     .returning();
 
   // Deduct ingredients when order moves to "preparing" (accepted by kitchen)
-  if (
-    status === "preparing" &&
-    existingOrder.status !== "preparing"
-  ) {
+  if (status === "preparing" && existingOrder.status !== "preparing") {
     await deductIngredients(id);
   }
 
-  // Free table and update customer stats when completed/cancelled
+  // On "completed" or "cancelled": free real tables, update customer stats
   if (status === "completed" || status === "cancelled") {
-    await db
-      .update(tablesTable)
-      .set({ status: "available", currentOrderId: null })
-      .where(eq(tablesTable.currentOrderId, id));
+    // Free table (for real tables only — Comptoir table stays always available)
+    const comptoirId = await getComptoirTableId();
+    if (existingOrder.tableId !== comptoirId) {
+      await db
+        .update(tablesTable)
+        .set({ status: "available", currentOrderId: null })
+        .where(eq(tablesTable.currentOrderId, id));
+    }
 
     if (status === "completed" && order.customerId) {
       const [cust] = await db
@@ -282,18 +307,20 @@ router.post("/orders/:id/transfer", async (req, res): Promise<void> => {
 
   const oldTableId = existingOrder.tableId;
 
-  // Update order's tableId
   const [order] = await db
     .update(ordersTable)
     .set({ tableId: newTableId })
     .where(eq(ordersTable.id, id))
     .returning();
 
-  // Free old table
-  await db
-    .update(tablesTable)
-    .set({ status: "available", currentOrderId: null })
-    .where(eq(tablesTable.id, oldTableId));
+  // Free old table (if not Comptoir)
+  const comptoirId = await getComptoirTableId();
+  if (oldTableId !== comptoirId) {
+    await db
+      .update(tablesTable)
+      .set({ status: "available", currentOrderId: null })
+      .where(eq(tablesTable.id, oldTableId));
+  }
 
   // Occupy new table
   await db

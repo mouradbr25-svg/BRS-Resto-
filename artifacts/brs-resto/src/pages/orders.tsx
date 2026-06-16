@@ -21,16 +21,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { formatDZD } from "@/lib/format";
-import { Clock, User, ChevronDown, ChevronUp, ArrowRightLeft, Plus, Minus, Timer, Flame, Leaf, Wheat, ShoppingBag, UtensilsCrossed, UserPlus } from "lucide-react";
+import {
+  Clock, User, ChevronDown, ChevronUp, ArrowRightLeft,
+  Plus, Minus, Timer, Flame, Leaf, Wheat,
+  ShoppingBag, UserPlus, Search, CreditCard,
+  ChefHat, UtensilsCrossed, Banknote,
+} from "lucide-react";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const SC: Record<string, { label: string; cls: string }> = {
-  pending:   { label: "Pending",   cls: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  preparing: { label: "Preparing", cls: "bg-blue-100 text-blue-800 border-blue-200" },
-  served:    { label: "Served",    cls: "bg-purple-100 text-purple-800 border-purple-200" },
-  completed: { label: "Completed", cls: "bg-green-100 text-green-800 border-green-200" },
-  cancelled: { label: "Cancelled", cls: "bg-red-100 text-red-800 border-red-200" },
+  pending:   { label: "En attente",       cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  preparing: { label: "En préparation",   cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  served:    { label: "Servi",            cls: "bg-violet-100 text-violet-800 border-violet-200" },
+  unpaid:    { label: "Non payé",         cls: "bg-orange-100 text-orange-800 border-orange-200" },
+  completed: { label: "Payé",             cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  cancelled: { label: "Annulé",           cls: "bg-rose-100 text-rose-800 border-rose-200" },
 };
+
+function getNextStatus(isWalkin: boolean, current: string): string | null {
+  switch (current) {
+    case "pending":   return "preparing";
+    case "preparing": return "served";
+    case "served":    return isWalkin ? "completed" : "unpaid";
+    case "unpaid":    return "completed";
+    default:          return null;
+  }
+}
+
+function getNextLabel(isWalkin: boolean, current: string): string {
+  switch (current) {
+    case "pending":   return "Accepter";
+    case "preparing": return "Prêt à servir";
+    case "served":    return isWalkin ? "Terminé" : "Table servie";
+    case "unpaid":    return "";
+    default:          return "";
+  }
+}
 
 // ─── Live elapsed timer ───────────────────────────────────────────────────────
 function ElapsedTimer({ since }: { since: string }) {
@@ -51,71 +77,26 @@ function ElapsedTimer({ since }: { since: string }) {
   );
 }
 
-// ─── Order progress stepper ───────────────────────────────────────────────────
-const STEPS = [
-  { status: "pending",   key: "received" },
-  { status: "preparing", key: "cooking"  },
-  { status: "served",    key: "serving"  },
-  { status: "completed", key: "done"     },
-] as const;
-
-const STATUS_ORDER = ["pending", "preparing", "served", "completed"];
-
-function OrderProgress({ status }: { status: string }) {
-  const { t } = useTranslation();
-  if (status === "cancelled") return null;
-  const currentIdx = STATUS_ORDER.indexOf(status);
-  return (
-    <div className="flex items-center gap-0 w-full mt-2 mb-1">
-      {STEPS.map((step, i) => {
-        const done = STATUS_ORDER.indexOf(step.status) <= currentIdx;
-        const isLast = i === STEPS.length - 1;
-        return (
-          <div key={step.key} className="flex items-center flex-1 min-w-0">
-            <div className="flex flex-col items-center flex-shrink-0">
-              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-colors ${
-                done ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 text-muted-foreground/30"
-              }`}>
-                {done ? "✓" : i + 1}
-              </div>
-              <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${done ? "text-primary" : "text-muted-foreground/50"}`}>
-                {t(`orders.progress.${step.key}` as any)}
-              </span>
-            </div>
-            {!isLast && (
-              <div className={`flex-1 h-0.5 mx-0.5 transition-colors ${
-                STATUS_ORDER.indexOf(step.status) < currentIdx ? "bg-primary" : "bg-muted-foreground/20"
-              }`} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Total prep badge ─────────────────────────────────────────────────────────
 function TotalPrepBadge({ items }: { items: Order["items"] }) {
-  const { t } = useTranslation();
   const maxPrep = (items ?? []).reduce((acc, it) => Math.max(acc, (it.prepTimeMinutes ?? 15) * it.quantity), 0);
   return (
     <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <Timer className="h-3 w-3" />
-      <span>{t("orders.estPrep")} {maxPrep} min</span>
+      <span>{maxPrep} min</span>
     </div>
   );
 }
 
 // ─── Transfer Dialog ──────────────────────────────────────────────────────────
 function TransferDialog({ order, open, onClose }: { order: Order | null; open: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const transfer = useTransferOrder();
   const { data: tables } = useListTables({ query: { queryKey: getListTablesQueryKey() } });
   const [newTableId, setNewTableId] = useState<string>("");
 
-  const availableTables = tables?.filter(t => t.status === "available" && t.id !== order?.tableId) ?? [];
+  const availableTables = tables?.filter(t => t.status === "available" && t.id !== order?.tableId && t.number !== 0) ?? [];
 
   const handleTransfer = () => {
     if (!order || !newTableId) return;
@@ -125,8 +106,7 @@ function TransferDialog({ order, open, onClose }: { order: Order | null; open: b
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListOrdersQueryKey({}) });
           qc.invalidateQueries({ queryKey: getListTablesQueryKey() });
-          const tbl = availableTables.find(tb => tb.id === parseInt(newTableId));
-          toast({ title: `Order #${order.id} moved to Table ${tbl?.number}` });
+          toast({ title: `Commande #${order.id} transférée` });
           setNewTableId("");
           onClose();
         },
@@ -138,28 +118,28 @@ function TransferDialog({ order, open, onClose }: { order: Order | null; open: b
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t("orders.transfer")} — Order #{order?.id}</DialogTitle>
+          <DialogTitle>Transfert — Commande #{order?.id}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Currently on Table {order?.tableNumber}.</p>
+          <p className="text-sm text-muted-foreground">Table actuelle : {order?.tableNumber ?? "Comptoir"}.</p>
           <div className="space-y-1.5">
-            <Label>{t("tables.title")}</Label>
+            <Label>Nouvelle table</Label>
             <Select value={newTableId} onValueChange={setNewTableId}>
-              <SelectTrigger><SelectValue placeholder={t("orders.selectTable")} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Sélectionner une table" /></SelectTrigger>
               <SelectContent>
                 {availableTables.length === 0
-                  ? <SelectItem value="__none" disabled>No available tables</SelectItem>
+                  ? <SelectItem value="__none" disabled>Aucune table disponible</SelectItem>
                   : availableTables.map(tb => (
-                      <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} seats)</SelectItem>
+                      <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} places)</SelectItem>
                     ))}
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button>
+          <Button variant="ghost" onClick={onClose}>Annuler</Button>
           <Button onClick={handleTransfer} disabled={!newTableId || transfer.isPending}>
-            <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Transfer
+            <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Transférer
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -175,7 +155,6 @@ type CartItem = {
 };
 
 function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const createOrder = useCreateOrder();
@@ -189,7 +168,7 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const [editNotesFor, setEditNotesFor] = useState<number | null>(null);
   const [itemNoteValue, setItemNoteValue] = useState("");
 
-  const availableTables = tables?.filter(t => t.status === "available") ?? [];
+  const availableTables = tables?.filter(t => t.status === "available" && t.number !== 0) ?? [];
 
   const addToCart = (item: { id: number; name: string; price: number; prepTimeMinutes: number; isSpicy?: boolean; isVegan?: boolean; isGlutenFree?: boolean }) => {
     setCart(c => {
@@ -210,17 +189,19 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
+  const canConfirm = cart.length > 0 && (orderType === "walkin" || tableId !== "");
+
   const handleCreate = () => {
-    if (!tableId || cart.length === 0) return;
+    if (!canConfirm) return;
     const noteParts: string[] = [];
     if (orderType === "walkin") noteParts.push("Vente directe");
-    else if (orderType === "seated" && guestName.trim()) noteParts.push(`Client: ${guestName.trim()}`);
+    else if (guestName.trim()) noteParts.push(`Client: ${guestName.trim()}`);
     if (notes.trim()) noteParts.push(notes.trim());
 
     createOrder.mutate(
       {
         data: {
-          tableId: parseInt(tableId, 10),
+          tableId: orderType === "seated" ? parseInt(tableId, 10) : undefined,
           customerId: undefined,
           items: cart.map(i => ({ menuItemId: i.menuItemId, quantity: i.quantity, notes: i.notes || undefined })),
           notes: noteParts.join(" — ") || undefined,
@@ -242,30 +223,18 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t("orders.newOrder")}</DialogTitle>
+          <DialogTitle>Nouvelle commande</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left: config + cart */}
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>{t("tables.title")}</Label>
-              <Select value={tableId} onValueChange={setTableId}>
-                <SelectTrigger data-testid="select-order-table"><SelectValue placeholder={t("orders.selectTable")} /></SelectTrigger>
-                <SelectContent>
-                  {availableTables.map(tb => (
-                    <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} places)</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Order type */}
             <div className="space-y-2">
-              <Label>Type de commande</Label>
+              <Label>Type de vente</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => { setOrderType("walkin"); setGuestName(""); }}
+                  onClick={() => { setOrderType("walkin"); setTableId(""); setGuestName(""); }}
                   className={`flex flex-col gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
                     orderType === "walkin" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/30"
                   }`}
@@ -283,29 +252,51 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 >
                   <UserPlus className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold">Assis en salle</span>
-                  <span className="text-xs text-muted-foreground">Sans QR code</span>
+                  <span className="text-xs text-muted-foreground">Table assignée</span>
                 </button>
               </div>
-              {orderType === "seated" && (
-                <Input
-                  placeholder="Prénom du client (optionnel)..."
-                  value={guestName}
-                  onChange={e => setGuestName(e.target.value)}
-                  autoFocus
-                />
-              )}
             </div>
 
+            {/* Table selector (only for seated) */}
+            {orderType === "seated" && (
+              <div className="space-y-1.5">
+                <Label>Table <span className="text-destructive">*</span></Label>
+                <Select value={tableId} onValueChange={setTableId}>
+                  <SelectTrigger data-testid="select-order-table"><SelectValue placeholder="Sélectionner une table" /></SelectTrigger>
+                  <SelectContent>
+                    {availableTables.length === 0
+                      ? <SelectItem value="__none" disabled>Aucune table disponible</SelectItem>
+                      : availableTables.map(tb => (
+                          <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} places)</SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Guest name (seated) */}
+            {orderType === "seated" && (
+              <div className="space-y-1.5">
+                <Label>Prénom du client <span className="text-muted-foreground text-xs">optionnel</span></Label>
+                <Input
+                  placeholder="Ex : Ahmed, Fatima..."
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Special notes */}
             <div className="space-y-1.5">
-              <Label>{t("common.notes")} <span className="text-muted-foreground text-xs">demandes spéciales</span></Label>
-              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder={t("orders.specialRequests")} />
+              <Label>Remarques <span className="text-muted-foreground text-xs">optionnel</span></Label>
+              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Allergies, préférences..." />
             </div>
 
             {/* Cart */}
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Summary</div>
+              <div className="bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Commande</div>
               {cart.length === 0 ? (
-                <p className="p-4 text-sm text-muted-foreground text-center">Tap items on the right to add</p>
+                <p className="p-4 text-sm text-muted-foreground text-center">Appuyez sur les plats pour ajouter</p>
               ) : (
                 <div className="divide-y">
                   {cart.map(item => (
@@ -322,31 +313,20 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
                         </div>
                         <span className="text-sm font-bold text-primary w-20 text-right">{formatDZD(item.price * item.quantity)}</span>
                       </div>
-                      {/* Item notes */}
                       {editNotesFor === item.menuItemId ? (
                         <div className="flex gap-1.5">
-                          <Input
-                            className="h-7 text-xs flex-1"
-                            placeholder={t("orders.itemNotes")}
-                            value={itemNoteValue}
-                            onChange={e => setItemNoteValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") saveItemNote(item.menuItemId); if (e.key === "Escape") { setEditNotesFor(null); setItemNoteValue(""); } }}
-                            autoFocus
-                          />
+                          <Input className="h-7 text-xs flex-1" placeholder="Note pour ce plat..." value={itemNoteValue} onChange={e => setItemNoteValue(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveItemNote(item.menuItemId); if (e.key === "Escape") { setEditNotesFor(null); setItemNoteValue(""); } }} autoFocus />
                           <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveItemNote(item.menuItemId)}>OK</Button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => { setEditNotesFor(item.menuItemId); setItemNoteValue(item.notes); }}
-                          className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                        >
-                          {item.notes ? `Note: ${item.notes}` : `+ ${t("orders.itemNotes")}`}
+                        <button onClick={() => { setEditNotesFor(item.menuItemId); setItemNoteValue(item.notes); }} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+                          {item.notes ? `Note: ${item.notes}` : "+ Ajouter une note"}
                         </button>
                       )}
                     </div>
                   ))}
                   <div className="flex justify-between px-3 py-2.5 font-bold bg-muted/20 text-sm">
-                    <span>{t("common.total")}</span>
+                    <span>Total</span>
                     <span className="text-primary">{formatDZD(total)}</span>
                   </div>
                 </div>
@@ -354,10 +334,10 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
             </div>
           </div>
 
-          {/* Right: menu browser with food images */}
+          {/* Right: menu browser */}
           <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("nav.menu")}</Label>
-            <div className="max-h-[420px] overflow-y-auto space-y-1.5 pr-0.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Menu</Label>
+            <div className="max-h-[480px] overflow-y-auto space-y-1.5 pr-0.5">
               {menuItems?.filter(m => m.available).map(m => {
                 const inCart = cart.find(c => c.menuItemId === m.id);
                 const imgUrl = (m as any).imageUrl as string | null | undefined;
@@ -369,12 +349,11 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
                       inCart ? "border-primary/50 bg-primary/5 shadow-sm" : "border-border hover:bg-accent hover:border-primary/30"
                     }`}
                   >
-                    {/* Food image thumbnail */}
                     <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
                       {imgUrl ? (
                         <img src={imgUrl} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-lg">🍽</div>
+                        <div className="w-full h-full flex items-center justify-center"><UtensilsCrossed className="h-5 w-5 text-muted-foreground/40" /></div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -386,11 +365,9 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
                       </div>
                       <p className="text-xs text-muted-foreground">{m.prepTimeMinutes ?? 15} min · {formatDZD(m.price)}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {inCart && (
-                        <Badge className="text-xs h-5 px-1.5 bg-primary text-white">{inCart.quantity}</Badge>
-                      )}
-                    </div>
+                    {inCart && (
+                      <Badge className="text-xs h-5 px-1.5 bg-primary text-white flex-shrink-0">{inCart.quantity}</Badge>
+                    )}
                   </button>
                 );
               })}
@@ -398,9 +375,9 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         </div>
         <DialogFooter className="mt-4 pt-4 border-t">
-          <Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button onClick={handleCreate} disabled={!tableId || cart.length === 0 || createOrder.isPending} data-testid="button-confirm-order">
-            {t("orders.placeOrder")} — {formatDZD(total)}
+          <Button variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button onClick={handleCreate} disabled={!canConfirm || createOrder.isPending} data-testid="button-confirm-order">
+            Passer la commande — {formatDZD(total)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -410,12 +387,14 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order, onTransfer }: { order: Order; onTransfer: (o: Order) => void }) {
-  const { t } = useTranslation();
   const qc = useQueryClient();
-  const isActive = order.status === "pending" || order.status === "preparing";
-  const [expanded, setExpanded] = useState(isActive);
+  const { toast } = useToast();
+  const [expanded, setExpanded] = useState(true);
   const updateStatus = useUpdateOrderStatus();
   const sc = SC[order.status] ?? SC.pending;
+  const isActive = order.status === "pending" || order.status === "preparing";
+  const isWalkin = (order as any).isWalkin as boolean ?? order.notes?.includes("Vente directe") ?? false;
+  const isUnpaid = order.status === "unpaid";
 
   const handleStatus = (s: string) => {
     updateStatus.mutate(
@@ -424,41 +403,54 @@ function OrderCard({ order, onTransfer }: { order: Order; onTransfer: (o: Order)
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListOrdersQueryKey({}) });
           qc.invalidateQueries({ queryKey: getListTablesQueryKey() });
+          if (s === "completed") toast({ title: `Commande #${order.id} — paiement confirmé`, description: formatDZD(order.finalAmount ?? order.totalAmount) });
         },
       }
     );
   };
 
+  const nextStatus = getNextStatus(isWalkin, order.status);
+  const nextLabel = getNextLabel(isWalkin, order.status);
+
   return (
-    <Card className={`flex flex-col ${isActive ? "border-primary/30 shadow-sm" : "opacity-75"}`}>
+    <Card className={`flex flex-col ${isUnpaid ? "ring-2 ring-orange-400 shadow-orange-100 shadow-lg" : isActive ? "border-primary/30 shadow-sm" : "opacity-80"}`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <div className="min-w-0">
-            <CardTitle className="text-base">Order #{order.id}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">
+                {order.customerName
+                  ? <span className="flex items-center gap-1"><User className="h-3.5 w-3.5 text-muted-foreground" />{order.customerName}</span>
+                  : `Commande #${order.id}`}
+              </CardTitle>
+            </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {new Date(order.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                {new Date(order.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              {order.customerName && <span className="flex items-center gap-1"><User className="h-3 w-3" />{order.customerName}</span>}
               {isActive && <ElapsedTimer since={order.createdAt} />}
             </div>
           </div>
           <Badge variant="outline" className={`text-xs flex-shrink-0 ${sc.cls}`}>{sc.label}</Badge>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-sm font-semibold">Table {order.tableNumber ?? "—"}</span>
+          {isWalkin ? (
+            <span className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground">
+              <ShoppingBag className="h-3.5 w-3.5" /> Comptoir
+            </span>
+          ) : (
+            <span className="text-sm font-semibold">Table {order.tableNumber ?? "—"}</span>
+          )}
           {isActive && <TotalPrepBadge items={order.items ?? []} />}
         </div>
-        {/* Visual progress stepper */}
-        <OrderProgress status={order.status} />
       </CardHeader>
 
       <CardContent className="flex-1 pt-0">
         <Collapsible open={expanded} onOpenChange={setExpanded}>
           <CollapsibleTrigger asChild>
             <button className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground pb-2 border-b mb-2 transition-colors">
-              <span>{order.items?.length ?? 0} item{(order.items?.length ?? 0) !== 1 ? "s" : ""}</span>
+              <span>{order.items?.length ?? 0} plat{(order.items?.length ?? 0) > 1 ? "s" : ""} · #{order.id}</span>
               {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </button>
           </CollapsibleTrigger>
@@ -468,10 +460,6 @@ function OrderCard({ order, onTransfer }: { order: Order; onTransfer: (o: Order)
                 <div key={i} className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm"><span className="font-semibold">{item.quantity}×</span> {item.menuItemName}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <Clock className="h-3 w-3" />
-                      <span>{item.prepTimeMinutes ?? 15} {t("orders.perPortion")} · {(item.prepTimeMinutes ?? 15) * item.quantity} min total</span>
-                    </div>
                     {item.notes && <p className="text-xs text-muted-foreground italic mt-0.5 truncate">{item.notes}</p>}
                   </div>
                   <span className="text-xs text-muted-foreground whitespace-nowrap mt-1">{formatDZD(item.subtotal)}</span>
@@ -482,84 +470,155 @@ function OrderCard({ order, onTransfer }: { order: Order; onTransfer: (o: Order)
         </Collapsible>
       </CardContent>
 
-      <CardFooter className="pt-3 border-t bg-muted/20 flex-col gap-2.5 items-stretch">
+      <CardFooter className="pt-3 border-t bg-muted/20 flex-col gap-2 items-stretch">
         <div className="flex justify-between font-bold text-sm">
-          <span>{t("common.total")}</span>
-          <span className="text-primary">{formatDZD(order.finalAmount ?? order.totalAmount)}</span>
+          <span>Total</span>
+          <span className="text-primary text-base">{formatDZD(order.finalAmount ?? order.totalAmount)}</span>
         </div>
 
-        {isActive && (
-          <button
-            onClick={() => onTransfer(order)}
-            className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded-md px-3 py-1.5 hover:bg-muted transition-colors w-full"
+        {/* Payment button for unpaid orders */}
+        {isUnpaid && (
+          <Button
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 h-11 text-base shadow-lg"
+            onClick={() => handleStatus("completed")}
+            disabled={updateStatus.isPending}
           >
-            <ArrowRightLeft className="h-3.5 w-3.5" /> {t("orders.transfer")}
-          </button>
+            <Banknote className="h-5 w-5" />
+            Encaisser {formatDZD(order.finalAmount ?? order.totalAmount)}
+          </Button>
         )}
 
-        {order.status !== "completed" && order.status !== "cancelled" && (
-          <Select value={order.status} onValueChange={handleStatus}>
-            <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">{t("status.pending")}</SelectItem>
-              <SelectItem value="preparing">{t("status.preparing")}</SelectItem>
-              <SelectItem value="served">{t("status.served")}</SelectItem>
-              <SelectItem value="completed">{t("status.completed")}</SelectItem>
-              <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Next step button for active orders */}
+        {nextLabel && !isUnpaid && (
+          <Button
+            variant={nextStatus === "unpaid" ? "outline" : "default"}
+            className="w-full gap-2"
+            onClick={() => nextStatus && handleStatus(nextStatus)}
+            disabled={updateStatus.isPending}
+          >
+            {order.status === "pending" && <ChefHat className="h-4 w-4" />}
+            {order.status === "preparing" && <UtensilsCrossed className="h-4 w-4" />}
+            {order.status === "served" && <CreditCard className="h-4 w-4" />}
+            {nextLabel}
+          </Button>
         )}
+
+        {/* Transfer + cancel row */}
+        <div className="flex gap-2">
+          {isActive && (
+            <button
+              onClick={() => onTransfer(order)}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded-md px-3 py-1.5 hover:bg-muted transition-colors"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" /> Transférer
+            </button>
+          )}
+          {order.status !== "completed" && order.status !== "cancelled" && (
+            <button
+              onClick={() => handleStatus("cancelled")}
+              className="flex-1 flex items-center justify-center gap-1 text-xs text-destructive hover:bg-destructive/5 border border-destructive/20 rounded-md px-3 py-1.5 transition-colors"
+              disabled={updateStatus.isPending}
+            >
+              Annuler
+            </button>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );
 }
 
+// ─── Section Header ───────────────────────────────────────────────────────────
+function SectionHeader({
+  icon: Icon, title, count, color = "default", badge,
+}: {
+  icon: React.ElementType;
+  title: string;
+  count: number;
+  color?: "default" | "blue" | "violet" | "orange" | "green";
+  badge?: React.ReactNode;
+}) {
+  const colorMap = {
+    default: "text-foreground",
+    blue:    "text-blue-700",
+    violet:  "text-violet-700",
+    orange:  "text-orange-700",
+    green:   "text-emerald-700",
+  };
+  const bgMap = {
+    default: "bg-muted",
+    blue:    "bg-blue-100",
+    violet:  "bg-violet-100",
+    orange:  "bg-orange-100",
+    green:   "bg-emerald-100",
+  };
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bgMap[color]}`}>
+        <Icon className={`h-4 w-4 ${colorMap[color]}`} />
+      </div>
+      <h2 className={`font-serif font-bold text-lg ${colorMap[color]}`}>{title}</h2>
+      <Badge variant="secondary" className="text-xs">{count}</Badge>
+      {badge}
+    </div>
+  );
+}
+
 // ─── Main Orders Page ─────────────────────────────────────────────────────────
 export default function Orders() {
-  const { t } = useTranslation();
-  const [filterStatus, setFilterStatus] = useState<string>("active");
-  const [transferTarget, setTransferTarget] = useState<Order | null>(null);
+  const [search, setSearch] = useState("");
   const [newOrderOpen, setNewOrderOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<Order | null>(null);
 
   const { data: orders, isLoading } = useListOrders(
     {},
-    { query: { queryKey: getListOrdersQueryKey({}), refetchInterval: 15000 } }
+    { query: { queryKey: getListOrdersQueryKey({}), refetchInterval: 10000 } }
   );
 
-  const activeCount = orders?.filter(o => o.status === "pending" || o.status === "preparing").length ?? 0;
+  const matchesSearch = (o: Order) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase().trim();
+    return (
+      (o.customerName?.toLowerCase().includes(q)) ||
+      String(o.id).includes(q) ||
+      (o.tableNumber != null && String(o.tableNumber).includes(q))
+    );
+  };
 
-  const filtered = (orders ?? []).filter(o => {
-    if (filterStatus === "active") return o.status === "pending" || o.status === "preparing";
-    if (filterStatus === "all") return true;
-    return o.status === filterStatus;
-  });
+  const all = orders ?? [];
+  const kitchenOrders  = all.filter(o => (o.status === "pending" || o.status === "preparing") && matchesSearch(o));
+  const servedOrders   = all.filter(o => o.status === "served" && matchesSearch(o));
+  const unpaidOrders   = all.filter(o => o.status === "unpaid" && matchesSearch(o));
+  const completedOrders = all.filter(o => o.status === "completed" && matchesSearch(o));
+  const cancelledOrders = all.filter(o => o.status === "cancelled" && matchesSearch(o));
+
+  const activeCount = kitchenOrders.length;
+  const unpaidCount = unpaidOrders.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-8">
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold">{t("orders.title")}</h1>
-          <p className="text-muted-foreground mt-1">
-            {activeCount > 0
-              ? `${activeCount} ${activeCount === 1 ? t("orders.activeOrders") : t("orders.activeOrdersPlural")} — ${t("orders.subtitle")}`
-              : t("orders.subtitle")}
+          <h1 className="text-3xl font-serif font-bold">Commandes</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {activeCount > 0 ? `${activeCount} commande${activeCount > 1 ? "s" : ""} en cuisine` : "Tableau de suivi des commandes"}
+            {unpaidCount > 0 && ` · ${unpaidCount} en attente de paiement`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-44 h-9 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active Orders</SelectItem>
-              <SelectItem value="all">All Orders</SelectItem>
-              <SelectItem value="pending">{t("status.pending")}</SelectItem>
-              <SelectItem value="preparing">{t("status.preparing")}</SelectItem>
-              <SelectItem value="served">{t("status.served")}</SelectItem>
-              <SelectItem value="completed">{t("status.completed")}</SelectItem>
-              <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-8 w-52 h-9 text-sm"
+              placeholder="Nom, table, n°..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
           <Button onClick={() => setNewOrderOpen(true)} data-testid="button-new-order">
-            <Plus className="h-4 w-4 mr-1.5" /> {t("orders.newOrder")}
+            <Plus className="h-4 w-4 mr-1.5" /> Nouvelle commande
           </Button>
         </div>
       </div>
@@ -568,15 +627,83 @@ export default function Orders() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full" />)}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-          {t("orders.noOrders")}
-        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(order => (
-            <OrderCard key={order.id} order={order} onTransfer={setTransferTarget} />
-          ))}
+        <div className="space-y-10">
+
+          {/* ── En cuisine ──────────────────────────────────────────────── */}
+          <section>
+            <SectionHeader icon={ChefHat} title="En cuisine" count={kitchenOrders.length} color="blue" />
+            {kitchenOrders.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground text-sm border-2 border-dashed rounded-xl border-blue-200 bg-blue-50/30">
+                Aucune commande en cours
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {kitchenOrders.map(o => <OrderCard key={o.id} order={o} onTransfer={setTransferTarget} />)}
+              </div>
+            )}
+          </section>
+
+          {/* ── Servis ──────────────────────────────────────────────────── */}
+          {servedOrders.length > 0 && (
+            <section>
+              <SectionHeader icon={UtensilsCrossed} title="Servis en salle" count={servedOrders.length} color="violet" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {servedOrders.map(o => <OrderCard key={o.id} order={o} onTransfer={setTransferTarget} />)}
+              </div>
+            </section>
+          )}
+
+          {/* ── En attente de paiement ──────────────────────────────────── */}
+          {unpaidOrders.length > 0 && (
+            <section className="bg-orange-50/60 border-2 border-orange-200 rounded-2xl p-5">
+              <SectionHeader
+                icon={CreditCard}
+                title="En attente de paiement"
+                count={unpaidOrders.length}
+                color="orange"
+                badge={<span className="text-xs text-orange-600 font-semibold ml-1">Encaissements requis</span>}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {unpaidOrders.map(o => <OrderCard key={o.id} order={o} onTransfer={setTransferTarget} />)}
+              </div>
+            </section>
+          )}
+
+          {/* ── Historique ──────────────────────────────────────────────── */}
+          <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium py-2 px-3 rounded-lg hover:bg-muted w-full">
+                {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                Historique du jour
+                <Badge variant="outline" className="ml-1">{completedOrders.length + cancelledOrders.length}</Badge>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-6 mt-4">
+                {completedOrders.length > 0 && (
+                  <section>
+                    <SectionHeader icon={Banknote} title="Payés" count={completedOrders.length} color="green" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {completedOrders.map(o => <OrderCard key={o.id} order={o} onTransfer={setTransferTarget} />)}
+                    </div>
+                  </section>
+                )}
+                {cancelledOrders.length > 0 && (
+                  <section>
+                    <SectionHeader icon={Timer} title="Annulés" count={cancelledOrders.length} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {cancelledOrders.map(o => <OrderCard key={o.id} order={o} onTransfer={setTransferTarget} />)}
+                    </div>
+                  </section>
+                )}
+                {completedOrders.length === 0 && cancelledOrders.length === 0 && (
+                  <div className="py-8 text-center text-muted-foreground text-sm">Aucun historique pour aujourd'hui</div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
         </div>
       )}
 

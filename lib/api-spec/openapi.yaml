@@ -451,7 +451,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [pending, preparing, served, completed, cancelled]
+            enum: [pending, preparing, served, unpaid, completed, cancelled]
         - name: tableId
           in: query
           required: false
@@ -1451,9 +1451,11 @@ components:
           type: ["integer", "null"]
         customerName:
           type: ["string", "null"]
+        isWalkin:
+          type: boolean
         status:
           type: string
-          enum: [pending, preparing, served, completed, cancelled]
+          enum: [pending, preparing, served, unpaid, completed, cancelled]
         totalAmount:
           type: number
         discountPercent:
@@ -1473,7 +1475,7 @@ components:
 
     OrderInput:
       type: object
-      required: [tableId, items]
+      required: [items]
       properties:
         tableId:
           type: integer
@@ -1494,7 +1496,7 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, preparing, served, completed, cancelled]
+          enum: [pending, preparing, served, unpaid, completed, cancelled]
 
     # CUSTOMERS
     Customer:
@@ -1673,7 +1675,13 @@ components:
           type: number
         totalOrders:
           type: integer
+        todayOrdersCount:
+          type: integer
+        todayCustomersCount:
+          type: integer
         activeOrders:
+          type: integer
+        unpaidCount:
           type: integer
         totalCustomers:
           type: integer
