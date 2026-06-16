@@ -219,12 +219,12 @@ function TableQRPanel({
   );
 }
 
-// ─── Print QR Sheet (3 tables) ────────────────────────────────────────────────
+// ─── Print QR Sheet (all tables) ─────────────────────────────────────────────
 function PrintQRSheet({
   tables, open, onClose,
 }: { tables: Table[]; open: boolean; onClose: () => void }) {
   const printRef = useRef<HTMLDivElement>(null);
-  const first3 = tables.slice(0, 3);
+  const allTables = [...tables].sort((a, b) => a.number - b.number);
 
   const handlePrint = () => {
     const content = printRef.current;
@@ -258,13 +258,13 @@ function PrintQRSheet({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Printer className="h-5 w-5" /> Feuille QR — 3 tables
+            <Printer className="h-5 w-5" /> Feuille QR — {allTables.length} tables
           </DialogTitle>
         </DialogHeader>
 
         <div ref={printRef}>
           <div className="sheet" style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-            {first3.map(table => {
+            {allTables.map(table => {
               const portalUrl = `${window.location.origin}/portal/${table.id}`;
               return (
                 <div key={table.id} className="card" style={{ border: "2px solid #e2e8f0", borderRadius: "16px", padding: "24px 20px", width: "220px", textAlign: "center" }}>

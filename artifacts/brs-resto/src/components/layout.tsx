@@ -297,9 +297,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const lowStockCount = ingredients?.filter(i => i.isLow).length ?? 0;
 
   const handleLogout = () => {
-    logout.mutate(undefined, {
-      onSuccess: () => { setUser(null); setLocation("/login"); },
-    });
+    setUser(null);
+    setLocation("/login");
+    logout.mutate(undefined);
   };
 
   const navItems = [
@@ -323,7 +323,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="px-6 py-5 border-b border-sidebar-border">
         <h1 className="text-2xl font-serif font-bold text-primary">BRS Resto</h1>
-        <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest mt-0.5">Management</p>
+        <p className="text-[9px] text-sidebar-foreground/50 uppercase tracking-widest mt-0.5 leading-tight">Système de Gestion</p>
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">

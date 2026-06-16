@@ -6,7 +6,6 @@ import {
   useTransferOrder,
   useListTables, getListTablesQueryKey,
   useListMenuItems, getListMenuItemsQueryKey,
-  useListCustomers, getListCustomersQueryKey,
   useCreateOrder,
 } from "@workspace/api-client-react";
 import type { Order } from "@workspace/api-client-react";
@@ -22,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { formatDZD } from "@/lib/format";
-import { Clock, User, ChevronDown, ChevronUp, ArrowRightLeft, Plus, Minus, Timer, Flame, Leaf, Wheat } from "lucide-react";
+import { Clock, User, ChevronDown, ChevronUp, ArrowRightLeft, Plus, Minus, Timer, Flame, Leaf, Wheat, ShoppingBag, UtensilsCrossed, UserPlus } from "lucide-react";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const SC: Record<string, { label: string; cls: string }> = {
@@ -182,9 +181,9 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
   const createOrder = useCreateOrder();
   const { data: tables } = useListTables({ query: { queryKey: getListTablesQueryKey() } });
   const { data: menuItems } = useListMenuItems({}, { query: { queryKey: getListMenuItemsQueryKey({}) } });
-  const { data: customers } = useListCustomers({ query: { queryKey: getListCustomersQueryKey() } });
   const [tableId, setTableId] = useState<string>("");
-  const [customerId, setCustomerId] = useState<string>("none");
+  const [orderType, setOrderType] = useState<"walkin" | "seated">("walkin");
+  const [guestName, setGuestName] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
   const [editNotesFor, setEditNotesFor] = useState<number | null>(null);
@@ -213,21 +212,26 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
 
   const handleCreate = () => {
     if (!tableId || cart.length === 0) return;
+    const noteParts: string[] = [];
+    if (orderType === "walkin") noteParts.push("Vente directe");
+    else if (orderType === "seated" && guestName.trim()) noteParts.push(`Client: ${guestName.trim()}`);
+    if (notes.trim()) noteParts.push(notes.trim());
+
     createOrder.mutate(
       {
         data: {
           tableId: parseInt(tableId, 10),
-          customerId: customerId !== "none" ? parseInt(customerId, 10) : undefined,
+          customerId: undefined,
           items: cart.map(i => ({ menuItemId: i.menuItemId, quantity: i.quantity, notes: i.notes || undefined })),
-          notes: notes || undefined,
+          notes: noteParts.join(" — ") || undefined,
         } as any,
       },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListOrdersQueryKey({}) });
           qc.invalidateQueries({ queryKey: getListTablesQueryKey() });
-          toast({ title: "Order placed" });
-          setTableId(""); setCustomerId("none"); setCart([]); setNotes("");
+          toast({ title: "Commande créée avec succès" });
+          setTableId(""); setOrderType("walkin"); setGuestName(""); setCart([]); setNotes("");
           onClose();
         },
       }
@@ -249,23 +253,51 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
                 <SelectTrigger data-testid="select-order-table"><SelectValue placeholder={t("orders.selectTable")} /></SelectTrigger>
                 <SelectContent>
                   {availableTables.map(tb => (
-                    <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} seats)</SelectItem>
+                    <SelectItem key={tb.id} value={String(tb.id)}>Table {tb.number} ({tb.capacity} places)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Customer <span className="text-muted-foreground text-xs">optional</span></Label>
-              <Select value={customerId} onValueChange={setCustomerId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("orders.walkIn")}</SelectItem>
-                  {customers?.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+
+            {/* Order type */}
+            <div className="space-y-2">
+              <Label>Type de commande</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setOrderType("walkin"); setGuestName(""); }}
+                  className={`flex flex-col gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
+                    orderType === "walkin" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/30"
+                  }`}
+                >
+                  <ShoppingBag className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Vente directe</span>
+                  <span className="text-xs text-muted-foreground">Emporter / comptoir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderType("seated")}
+                  className={`flex flex-col gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
+                    orderType === "seated" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/30"
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Assis en salle</span>
+                  <span className="text-xs text-muted-foreground">Sans QR code</span>
+                </button>
+              </div>
+              {orderType === "seated" && (
+                <Input
+                  placeholder="Prénom du client (optionnel)..."
+                  value={guestName}
+                  onChange={e => setGuestName(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
+
             <div className="space-y-1.5">
-              <Label>{t("common.notes")}</Label>
+              <Label>{t("common.notes")} <span className="text-muted-foreground text-xs">demandes spéciales</span></Label>
               <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder={t("orders.specialRequests")} />
             </div>
 
@@ -322,30 +354,42 @@ function NewOrderDialog({ open, onClose }: { open: boolean; onClose: () => void 
             </div>
           </div>
 
-          {/* Right: menu browser */}
+          {/* Right: menu browser with food images */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("nav.menu")}</Label>
-            <div className="max-h-96 overflow-y-auto space-y-1 pr-0.5">
+            <div className="max-h-[420px] overflow-y-auto space-y-1.5 pr-0.5">
               {menuItems?.filter(m => m.available).map(m => {
                 const inCart = cart.find(c => c.menuItemId === m.id);
+                const imgUrl = (m as any).imageUrl as string | null | undefined;
                 return (
                   <button
                     key={m.id}
                     onClick={() => addToCart({ id: m.id, name: m.name, price: m.price, prepTimeMinutes: m.prepTimeMinutes ?? 15, isSpicy: m.isSpicy, isVegan: m.isVegan, isGlutenFree: m.isGlutenFree })}
-                    className="w-full text-left flex items-center justify-between px-3 py-2.5 rounded-md border hover:bg-accent hover:border-primary/30 transition-colors"
+                    className={`w-full text-left flex items-center gap-3 px-2.5 py-2 rounded-xl border transition-all ${
+                      inCart ? "border-primary/50 bg-primary/5 shadow-sm" : "border-border hover:bg-accent hover:border-primary/30"
+                    }`}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm font-medium truncate">{m.name}</p>
+                    {/* Food image thumbnail */}
+                    <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
+                      {imgUrl ? (
+                        <img src={imgUrl} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg">🍽</div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <p className="text-sm font-semibold truncate">{m.name}</p>
                         {m.isSpicy && <Flame className="h-3 w-3 text-red-500 flex-shrink-0" />}
                         {m.isVegan && <Leaf className="h-3 w-3 text-green-600 flex-shrink-0" />}
                         {m.isGlutenFree && <Wheat className="h-3 w-3 text-amber-600 flex-shrink-0" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">{m.prepTimeMinutes ?? 15}m prep</p>
+                      <p className="text-xs text-muted-foreground">{m.prepTimeMinutes ?? 15} min · {formatDZD(m.price)}</p>
                     </div>
-                    <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                      {inCart && <Badge variant="secondary" className="text-xs h-5 px-1.5">{inCart.quantity}</Badge>}
-                      <span className="text-sm font-bold text-primary">{formatDZD(m.price)}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {inCart && (
+                        <Badge className="text-xs h-5 px-1.5 bg-primary text-white">{inCart.quantity}</Badge>
+                      )}
                     </div>
                   </button>
                 );
@@ -377,10 +421,10 @@ function OrderCard({ order, onTransfer }: { order: Order; onTransfer: (o: Order)
     updateStatus.mutate(
       { id: order.id, data: { status: s as any } },
       {
-        onSuccess: u => qc.setQueryData(
-          getListOrdersQueryKey({}),
-          (old: Order[] | undefined) => old?.map(o => o.id === order.id ? u : o) ?? []
-        ),
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListOrdersQueryKey({}) });
+          qc.invalidateQueries({ queryKey: getListTablesQueryKey() });
+        },
       }
     );
   };
