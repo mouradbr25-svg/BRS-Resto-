@@ -39,6 +39,9 @@ async function buildOrderResponse(order: typeof ordersTable.$inferSelect) {
       .from(customersTable)
       .where(eq(customersTable.id, order.customerId));
     customerName = cust?.name ?? null;
+  } else if (order.notes) {
+    const clientPart = order.notes.split(" — ").find(p => p.startsWith("Client: "));
+    if (clientPart) customerName = clientPart.replace("Client: ", "").trim();
   }
 
   return {
