@@ -1,4 +1,5 @@
-"version": "0.0.0",
+{ "name": "@workspace/scripts",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,5 +9,4 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "catalog:"
-  }
-}
+  
